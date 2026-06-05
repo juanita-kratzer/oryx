@@ -1,0 +1,170 @@
+// Oryx — Digital Card Product
+// Database: Supabase Postgres
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth & Users
+// ---------------------------------------------------------------------------
+
+model User {
+  id         String   @id @default(cuid())
+  supabaseId String   @unique
+  email      String?
+  name       String?
+  imageUrl   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  cards      Card[]
+}
+
+// ---------------------------------------------------------------------------
+// Templates (admin-defined, seeded)
+// ---------------------------------------------------------------------------
+
+model Template {
+  id          String           @id @default(cuid())
+  slug        String           @unique
+  name        String
+  description String?
+  category    TemplateCategory @default(BUSINESS)
+
+  thumbnailUrl    String?
+  previewImageUrl String?
+
+  /// Which fields the user can edit, e.g. ["name","business","phone","email"]
+  editableFields Json
+
+  /// Apple Wallet pass type: generic, storeCard, eventTicket, etc.
+  passType String @default("generic")
+
+  /// How editable fields map to PassKit primary/secondary/auxiliary/back fields
+  passLayout Json
+
+  /// Hex color choices shown to the user, e.g. ["#1a1a2e","#0f3460"]
+  colorOptions Json?
+
+  defaultBgColor String @default("#1a1a2e")
+
+  active    Boolean @default(true)
+  sortOrder Int     @default(0)
+  premium   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cards     Card[]
+
+  @@index([active, sortOrder])
+}
+
+enum TemplateCategory {
+  BUSINESS
+  MEMBERSHIP
+  GIFT
+  CONTACT
+  BOOKING
+}
+
+// ---------------------------------------------------------------------------
+// Cards (user-created from a template)
+// ---------------------------------------------------------------------------
+
+model Card {
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  templateId String
+  template   Template   @relation(fields: [templateId], references: [id])
+  slug       String     @unique
+  status     CardStatus @default(DRAFT)
+
+  // Common content fields (used by the NFC landing page)
+  name     String?
+  business String?
+  phone    String?
+  email    String?
+  website  String?
+
+  // Template-specific field values stored as JSON
+  // e.g. { "title": "Founder", "balance": "$50", "memberSince": "Jan 2023" }
+  fieldValues Json?
+
+  // Visual
+  logoUrl         String?
+  backgroundColor String?
+
+  // Purchase tracking (RevenueCat transaction ID)
+  purchaseId String?
+
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  passes     Pass[]
+  dailyStats CardDailyStats[]
+
+  @@index([userId, status])
+}
+
+enum CardStatus {
+  DRAFT
+  PAID
+}
+
+// ---------------------------------------------------------------------------
+// Wallet Passes (generated files / URLs)
+// ---------------------------------------------------------------------------
+
+model Pass {
+  id          String       @id @default(cuid())
+  cardId      String
+  card        Card         @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  platform    PassPlatform @default(APPLE)
+  fileUrl     String
+  version     Int          @default(1)
+  generatedAt DateTime?    @default(now())
+  createdAt   DateTime     @default(now())
+
+  @@index([cardId, platform])
+}
+
+enum PassPlatform {
+  APPLE
+  GOOGLE
+}
+
+// ---------------------------------------------------------------------------
+// Analytics
+// ---------------------------------------------------------------------------
+
+model CardDailyStats {
+  id             String   @id @default(cuid())
+  cardId         String
+  card           Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  date           DateTime @db.Date
+  taps           Int      @default(0)
+  vcardDownloads Int      @default(0)
+  passDownloads  Int      @default(0)
+
+  @@unique([cardId, date])
+}
+
+// ---------------------------------------------------------------------------
+// System (logging, operational)
+// ---------------------------------------------------------------------------
+
+model SystemEvent {
+  id        String   @id @default(cuid())
+  type      String
+  message   String?
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  @@index([type, createdAt(sort: Desc)])
+}
