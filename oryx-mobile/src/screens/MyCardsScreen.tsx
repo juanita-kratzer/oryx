@@ -15,8 +15,10 @@ import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { fetchMyCards } from "../lib/firestore";
 import { subscribeCardsChanged } from "../lib/cardsEvents";
+import { useTabBarInsets } from "../lib/screenInsets";
 import { useTheme } from "../contexts/ThemeContext";
 import type { BrandColors } from "../constants/colors";
+import { QR_BARCODE_CARD_TEMPLATE_ID } from "../constants/cardTemplates";
 import type { MainTabParamList, RootStackParamList, Card } from "../types";
 
 type Nav = CompositeNavigationProp<
@@ -27,15 +29,20 @@ type Nav = CompositeNavigationProp<
 function createStyles(colors: BrandColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    list: { padding: 16, paddingBottom: 100 },
+    list: { padding: 16 },
     header: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      marginTop: 40,
       marginBottom: 20,
+      gap: 12,
     },
-    title: { fontSize: 28, fontWeight: "800", color: colors.text },
+    title: {
+      flex: 1,
+      fontSize: 28,
+      fontWeight: "800",
+      color: colors.text,
+    },
     newButton: {
       backgroundColor: colors.primary,
       paddingHorizontal: 16,
@@ -115,6 +122,7 @@ function createStyles(colors: BrandColors) {
 export function MyCardsScreen() {
   const navigation = useNavigation<Nav>();
   const { colors } = useTheme();
+  const { headerTopPadding, listBottomPadding } = useTabBarInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,7 +162,10 @@ export function MyCardsScreen() {
       <FlatList
         data={cards}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[
+          styles.list,
+          { paddingTop: headerTopPadding, paddingBottom: listBottomPadding },
+        ]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListHeaderComponent={
           <>
@@ -187,7 +198,12 @@ export function MyCardsScreen() {
         }
         renderItem={({ item }) => {
           const isBusinessCard = item.templateId === "business";
-          const heading = isBusinessCard ? "Business card" : item.template.name;
+          const isQrBarcodeCard = item.templateId === QR_BARCODE_CARD_TEMPLATE_ID;
+          const heading = isBusinessCard
+            ? "Business card"
+            : isQrBarcodeCard
+              ? "QR / Barcode Card"
+              : item.template.name;
           const businessName = item.business?.trim();
           const personName = item.name?.trim();
 
@@ -216,6 +232,10 @@ export function MyCardsScreen() {
                 {isBusinessCard ? (
                   <View style={styles.cardIconWrap}>
                     <Ionicons name="briefcase-outline" size={28} color={colors.primary} />
+                  </View>
+                ) : isQrBarcodeCard ? (
+                  <View style={styles.cardIconWrap}>
+                    <Ionicons name="barcode-outline" size={28} color={colors.primary} />
                   </View>
                 ) : null}
               </View>

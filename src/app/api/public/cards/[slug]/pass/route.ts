@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { isQrBarcodeCardTemplate } from "@/lib/cardTemplates";
 import { deliverApplePass } from "@/lib/passkit/deliverApplePass";
 
 type Params = { params: Promise<{ slug: string }> };
@@ -48,6 +49,10 @@ export async function GET(request: Request, { params }: Params) {
 
   if (!card) {
     return NextResponse.json({ error: "Card not found." }, { status: 404 });
+  }
+
+  if (isQrBarcodeCardTemplate(card.template.slug)) {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 
   return deliverApplePass(card, { analyticsContext: "reciprocal" });

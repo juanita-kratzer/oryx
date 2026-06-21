@@ -1,6 +1,7 @@
 import type { Card } from "../types";
 import { getAuth } from "./firebase";
 import { buildCardLinkFields } from "./cardLinks";
+import { isPrivateCardTemplate } from "../constants/cardTemplates";
 
 function storageKey(): string {
   const uid = getAuth().currentUser?.uid;
@@ -55,7 +56,10 @@ export async function createCard(data: {
   const now = new Date().toISOString();
   const id = makeId();
   const slug = data.slug || id;
-  const links = buildCardLinkFields(slug);
+  const privateCard = isPrivateCardTemplate(data.templateId);
+  const links = privateCard
+    ? { publicUrl: null, nfcUrl: null, qrUrl: null }
+    : buildCardLinkFields(slug);
   const card: Card = {
     id,
     slug,
@@ -70,7 +74,7 @@ export async function createCard(data: {
     fieldValues: data.fieldValues || null,
     logoUrl: null,
     backgroundColor: data.backgroundColor || null,
-    allowSmartExchange: data.allowSmartExchange ?? true,
+    allowSmartExchange: privateCard ? false : data.allowSmartExchange ?? true,
     publicUrl: links.publicUrl,
     nfcUrl: links.nfcUrl,
     qrUrl: links.qrUrl,

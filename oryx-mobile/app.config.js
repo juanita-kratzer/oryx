@@ -26,7 +26,7 @@ export default {
         LSApplicationCategoryType: "public.app-category.business",
         ITSAppUsesNonExemptEncryption: false,
         NSContactsUsageDescription: "Oryx needs access to your contacts to save business card information.",
-        NSCameraUsageDescription: "Oryx needs camera access to scan business cards.",
+        NSCameraUsageDescription: "Oryx needs camera access to scan business cards and membership barcodes.",
         NFCReaderUsageDescription:
           "Oryx writes your card link to NFC tags so people can tap your tag to open your card.",
       },
@@ -45,6 +45,13 @@ export default {
     plugins: [
       "expo-secure-store",
       "expo-image-picker",
+      [
+        "expo-camera",
+        {
+          cameraPermission:
+            "Oryx needs camera access to scan QR codes and barcodes on membership cards.",
+        },
+      ],
       "expo-font",
       [
         "expo-contacts",

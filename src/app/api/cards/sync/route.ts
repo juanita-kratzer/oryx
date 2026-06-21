@@ -3,10 +3,40 @@ import type { CardStatus } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { generateUniqueSlug } from "@/lib/slug";
+import {
+  isQrBarcodeCardTemplate,
+  MOBILE_TEMPLATE_SLUG_MAP,
+} from "@/lib/cardTemplates";
+import { logCardAnalyticsEvent } from "@/lib/analytics";
+
+async function resolveTemplateForMobile(mobileTemplateId?: string) {
+  const slug = mobileTemplateId
+    ? MOBILE_TEMPLATE_SLUG_MAP[mobileTemplateId]
+    : undefined;
+
+  if (slug) {
+    const bySlug = await prisma.template.findFirst({
+      where: { slug, active: true },
+    });
+    if (bySlug) return bySlug;
+  }
+
+  if (mobileTemplateId === "business" || !mobileTemplateId) {
+    const business = await prisma.template.findFirst({
+      where: { category: "BUSINESS", active: true },
+      orderBy: { sortOrder: "asc" },
+    });
+    if (business) return business;
+  }
+
+  return prisma.template.findFirst({
+    where: { active: true },
+    orderBy: { sortOrder: "asc" },
+  });
+}
 
 /**
- * Upsert a mobile (Firestore) business card into Postgres for public landing,
- * PassKit, and Smart Exchange.
+ * Upsert a mobile (Firestore) card into Postgres for PassKit and public landing.
  */
 export async function POST(request: Request) {
   const user = await getCurrentUser(request);
@@ -41,16 +71,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "externalId is required" }, { status: 400 });
   }
 
-  const template =
-    (await prisma.template.findFirst({
-      where: { category: "BUSINESS", active: true },
-      orderBy: { sortOrder: "asc" },
-    })) ??
-    (await prisma.template.findFirst({ where: { active: true }, orderBy: { sortOrder: "asc" } }));
+  const template = await resolveTemplateForMobile(body.templateId);
 
   if (!template) {
     return NextResponse.json({ error: "No active template" }, { status: 500 });
   }
+
+  const isPrivate = isQrBarcodeCardTemplate(body.templateId);
 
   const existing = await prisma.card.findUnique({
     where: { externalId: body.externalId.trim() },
@@ -78,7 +105,9 @@ export async function POST(request: Request) {
     logoUrl: body.logoUrl ?? null,
     backgroundColor: body.backgroundColor ?? template.defaultBgColor,
     purchaseId: body.purchaseId ?? null,
-    allowSmartExchange: body.allowSmartExchange ?? existing?.allowSmartExchange ?? true,
+    allowSmartExchange: isPrivate
+      ? false
+      : body.allowSmartExchange ?? existing?.allowSmartExchange ?? true,
   };
 
   const card = existing
@@ -91,6 +120,12 @@ export async function POST(request: Request) {
         data,
         include: { template: { select: { slug: true, name: true, category: true } } },
       });
+
+  if (isPrivate) {
+    logCardAnalyticsEvent(card.id, "qr_barcode_card_created", {
+      templateSlug: template.slug,
+    }).catch(() => {});
+  }
 
   return NextResponse.json(card);
 }

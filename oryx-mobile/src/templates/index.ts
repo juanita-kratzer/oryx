@@ -5,6 +5,7 @@ import { createCoupon } from "./coupon";
 import { createGiftCard } from "./giftCard";
 import { createLoyaltyCard } from "./loyaltyCard";
 import { createGenericCard } from "./genericCard";
+import { QR_BARCODE_CARD_TEMPLATE_ID } from "../constants/cardTemplates";
 import { createGymMembershipCard } from "./gymMembership";
 import { createGymClassPassCard } from "./gymClassPass";
 
@@ -57,6 +58,13 @@ export const TEMPLATE_REGISTRY: TemplateInfo[] = [
     name: "Gym Class Pass",
     description: "Group fitness class pack with session tracker and expiry",
     factory: createGymClassPassCard,
+  },
+  {
+    id: QR_BARCODE_CARD_TEMPLATE_ID,
+    name: "QR / Barcode Card",
+    description:
+      "Store loyalty cards, gym memberships, rewards cards, and other scannable memberships.",
+    factory: createGenericCard,
   },
   {
     id: "generic",

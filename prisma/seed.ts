@@ -274,6 +274,47 @@ const templates = [
     ],
     sortOrder: 7,
   },
+  {
+    slug: "qr-barcode-card",
+    name: "QR / Barcode Card",
+    description:
+      "Store loyalty cards, gym memberships, rewards cards, student cards, library cards, and other scannable memberships.",
+    category: "MEMBERSHIP" as const,
+    passType: "storeCard",
+    defaultBgColor: "#ffffff",
+    editableFields: [
+      { key: "name", label: "Card Name", placeholder: "Gym Membership", required: true, maxLength: 60 },
+      { key: "barcodeValue", label: "Barcode or QR Value", placeholder: "Scan or paste code", required: true, maxLength: 500 },
+      { key: "business", label: "Organisation Name", placeholder: "FitClub", maxLength: 50 },
+      { key: "membershipNumber", label: "Membership Number", placeholder: "1234567890", maxLength: 40 },
+      { key: "expiryDate", label: "Expiry Date", placeholder: "31 Dec 2026", maxLength: 30 },
+      { key: "notes", label: "Notes", placeholder: "Optional notes", maxLength: 200 },
+    ],
+    passLayout: {
+      headerFields: [
+        { key: "org", fieldPath: "business", label: "" },
+      ],
+      primaryFields: [
+        { key: "cardName", fieldPath: "name", label: "" },
+      ],
+      secondaryFields: [
+        { key: "memberNo", fieldPath: "fieldValues.membershipNumber", label: "Member #" },
+        { key: "expires", fieldPath: "fieldValues.expiryDate", label: "Expires" },
+      ],
+      auxiliaryFields: [],
+      backFields: [
+        { key: "notes", fieldPath: "fieldValues.notes", label: "Notes" },
+      ],
+    },
+    colorOptions: [
+      { label: "White", value: "#ffffff" },
+      { label: "Sand", value: "#f5ebe0" },
+      { label: "Slate", value: "#1e293b" },
+      { label: "Forest", value: "#14532d" },
+      { label: "Onyx", value: "#111827" },
+    ],
+    sortOrder: 8,
+  },
 ];
 
 async function main() {

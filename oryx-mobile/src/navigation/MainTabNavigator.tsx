@@ -1,5 +1,11 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, Platform } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Platform,
+  useWindowDimensions,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { ComponentProps } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -9,43 +15,52 @@ import { AccountScreen } from "../screens/AccountScreen";
 import { useTheme } from "../contexts/ThemeContext";
 import type { BrandColors } from "../constants/colors";
 import type { MainTabParamList } from "../types";
+import { useTabBarInsets } from "../lib/screenInsets";
 
 type IoniconName = ComponentProps<typeof Ionicons>["name"];
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-function createStyles(colors: BrandColors) {
+function createStyles(colors: BrandColors, compact: boolean) {
   return StyleSheet.create({
     tabBar: {
       backgroundColor: colors.card,
       borderTopColor: colors.border,
-      borderTopWidth: 1,
-      height: Platform.OS === "ios" ? 88 : 68,
-      paddingTop: 8,
-      paddingBottom: Platform.OS === "ios" ? 28 : 10,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      elevation: 0,
+      shadowOpacity: 0,
+      overflow: "visible",
     },
     tabBarItem: {
-      paddingTop: 4,
+      flex: 1,
+      justifyContent: "flex-end",
+      alignItems: "center",
+      paddingBottom: 2,
+      overflow: "visible",
     },
     tabItem: {
       alignItems: "center",
-      justifyContent: "center",
-      minWidth: 72,
+      justifyContent: "flex-end",
+      minWidth: compact ? 64 : 72,
+      paddingHorizontal: 2,
+      overflow: "visible",
     },
     tabItemCenter: {
-      marginTop: -18,
+      marginTop: compact ? -2 : -4,
     },
     iconWrap: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: compact ? 28 : 30,
+      height: compact ? 28 : 30,
+      borderRadius: compact ? 14 : 15,
       alignItems: "center",
       justifyContent: "center",
+      marginBottom: 2,
     },
     iconWrapCenter: {
-      width: 52,
-      height: 52,
-      borderRadius: 26,
+      width: compact ? 44 : 48,
+      height: compact ? 44 : 48,
+      borderRadius: compact ? 22 : 24,
+      marginBottom: 2,
       backgroundColor: colors.background,
       borderWidth: 1,
       borderColor: colors.border,
@@ -58,17 +73,21 @@ function createStyles(colors: BrandColors) {
       borderColor: colors.primary,
     },
     label: {
-      marginTop: 4,
-      fontSize: 11,
+      marginTop: 0,
+      fontSize: compact ? 10 : 11,
+      lineHeight: compact ? 12 : 13,
       fontWeight: "500",
       color: colors.textSecondary,
+      textAlign: "center",
+      width: "100%",
+      includeFontPadding: false,
     },
     labelFocused: {
       color: colors.text,
       fontWeight: "600",
     },
     labelCenter: {
-      fontSize: 12,
+      fontSize: compact ? 11 : 12,
       fontWeight: "600",
     },
   });
@@ -82,6 +101,7 @@ function TabIcon({
   center,
   colors,
   styles,
+  compact,
 }: {
   label: string;
   icon: IoniconName;
@@ -90,6 +110,7 @@ function TabIcon({
   center?: boolean;
   colors: BrandColors;
   styles: ReturnType<typeof createStyles>;
+  compact: boolean;
 }) {
   const iconColor =
     center && focused
@@ -97,7 +118,7 @@ function TabIcon({
       : focused
         ? colors.text
         : colors.textSecondary;
-  const iconSize = center ? 24 : 22;
+  const iconSize = center ? (compact ? 22 : 24) : compact ? 20 : 22;
 
   return (
     <View style={[styles.tabItem, center && styles.tabItemCenter]}>
@@ -121,6 +142,9 @@ function TabIcon({
           focused && styles.labelFocused,
           center && styles.labelCenter,
         ]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
       >
         {label}
       </Text>
@@ -130,16 +154,34 @@ function TabIcon({
 
 export function MainTabNavigator() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { width } = useWindowDimensions();
+  const compact = width < 380;
+  const { bottomPadding, tabBarHeight } = useTabBarInsets();
+  const styles = useMemo(
+    () => createStyles(colors, compact),
+    [colors, compact]
+  );
+
+  const tabBarStyle = useMemo(
+    () => ({
+      ...styles.tabBar,
+      height: tabBarHeight,
+      paddingTop: 10,
+      paddingBottom: bottomPadding,
+    }),
+    [styles.tabBar, tabBarHeight, bottomPadding]
+  );
 
   return (
     <Tab.Navigator
       initialRouteName="Cards"
+      safeAreaInsets={{ bottom: 0 }}
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle,
         tabBarItemStyle: styles.tabBarItem,
+        tabBarHideOnKeyboard: Platform.OS !== "web",
       }}
     >
       <Tab.Screen
@@ -154,6 +196,7 @@ export function MainTabNavigator() {
               focused={focused}
               colors={colors}
               styles={styles}
+              compact={compact}
             />
           ),
         }}
@@ -171,6 +214,7 @@ export function MainTabNavigator() {
               center
               colors={colors}
               styles={styles}
+              compact={compact}
             />
           ),
         }}
@@ -187,6 +231,7 @@ export function MainTabNavigator() {
               focused={focused}
               colors={colors}
               styles={styles}
+              compact={compact}
             />
           ),
         }}

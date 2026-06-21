@@ -6,13 +6,14 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
-  Switch,
 } from "react-native";
+import { AppSwitch } from "../components/AppSwitch";
 import { useNavigation } from "@react-navigation/native";
 import type { CompositeNavigationProp } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../contexts/AuthContext";
+import { useTabBarInsets } from "../lib/screenInsets";
 import { useTheme } from "../contexts/ThemeContext";
 import type { BrandColors } from "../constants/colors";
 import type { MainTabParamList, RootStackParamList } from "../types";
@@ -28,7 +29,7 @@ const CARD_CREDITS_PLACEHOLDER = 0;
 function createStyles(colors: BrandColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    content: { padding: 20, paddingTop: 56, paddingBottom: 100 },
+    content: { padding: 20 },
     title: {
       fontSize: 28,
       fontWeight: "800",
@@ -130,12 +131,19 @@ export function AccountScreen() {
   const navigation = useNavigation<Nav>();
   const { user, loading, signOut } = useAuth();
   const { colors, isDark, setMode } = useTheme();
+  const { headerTopPadding, listBottomPadding } = useTabBarInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[
+        styles.content,
+        {
+          paddingTop: headerTopPadding,
+          paddingBottom: listBottomPadding,
+        },
+      ]}
     >
       <Text style={styles.title}>Account</Text>
 
@@ -178,22 +186,16 @@ export function AccountScreen() {
         <Text style={styles.sectionTitle}>Appearance</Text>
         <View style={styles.row}>
           <Text style={styles.rowLabel}>Light mode</Text>
-          <Switch
+          <AppSwitch
             value={!isDark}
             onValueChange={(enabled) => setMode(enabled ? "light" : "dark")}
-            trackColor={{ false: colors.border, true: colors.text }}
-            thumbColor="#ffffff"
-            ios_backgroundColor={colors.border}
           />
         </View>
         <View style={[styles.row, styles.rowLast]}>
           <Text style={styles.rowLabel}>Dark mode</Text>
-          <Switch
+          <AppSwitch
             value={isDark}
             onValueChange={(enabled) => setMode(enabled ? "dark" : "light")}
-            trackColor={{ false: colors.border, true: colors.text }}
-            thumbColor="#ffffff"
-            ios_backgroundColor={colors.border}
           />
         </View>
       </View>

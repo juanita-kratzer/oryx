@@ -7,6 +7,8 @@ import { PKPass } from "passkit-generator";
 import { getPassKitCertificates, getPassKitIds } from "./signer";
 import { normalizePassBackgroundColor } from "./backgroundColor";
 import { getCardWalletUrl } from "@/lib/cardLinks";
+import { isQrBarcodeCardTemplate, QR_BARCODE_POSTGRES_SLUG } from "@/lib/cardTemplates";
+import { normalizeWalletBarcodeFormat } from "@/lib/passkit/barcodeFormats";
 import type { Card, Template } from "@prisma/client";
 
 type CardWithTemplate = Card & { template: Template };
@@ -60,7 +62,6 @@ export async function buildPass(card: CardWithTemplate): Promise<Buffer> {
   const { template } = card;
   const certs = getPassKitCertificates();
   const ids = getPassKitIds();
-  const landingUrl = getCardWalletUrl(card);
   const layout = template.passLayout as PassLayout;
 
   const buffers: Record<string, Buffer> = {};
@@ -102,14 +103,35 @@ export async function buildPass(card: CardWithTemplate): Promise<Buffer> {
   if (layout.auxiliaryFields) populateFields(pass.auxiliaryFields, layout.auxiliaryFields, card);
   if (layout.backFields) populateFields(pass.backFields, layout.backFields, card);
 
-  pass.setBarcodes(landingUrl);
+  const isQrBarcode =
+    card.template.slug === QR_BARCODE_POSTGRES_SLUG ||
+    isQrBarcodeCardTemplate(
+      (card.fieldValues as Record<string, string> | null)?.cardKind
+    );
 
-  const nfcPublicKey = process.env.NFC_PUBLIC_KEY;
-  if (nfcPublicKey) {
-    pass.setNFC({
-      message: landingUrl,
-      encryptionPublicKey: nfcPublicKey,
+  if (isQrBarcode) {
+    const fieldValues = (card.fieldValues ?? {}) as Record<string, string>;
+    const message = fieldValues.barcodeValue?.trim();
+    if (!message) {
+      throw new Error("QR / Barcode card is missing barcodeValue");
+    }
+    const format = normalizeWalletBarcodeFormat(fieldValues.walletBarcodeFormat);
+    pass.setBarcodes({
+      message,
+      format,
+      messageEncoding: "iso-8859-1",
     });
+  } else {
+    const landingUrl = getCardWalletUrl(card);
+    pass.setBarcodes(landingUrl);
+
+    const nfcPublicKey = process.env.NFC_PUBLIC_KEY;
+    if (nfcPublicKey) {
+      pass.setNFC({
+        message: landingUrl,
+        encryptionPublicKey: nfcPublicKey,
+      });
+    }
   }
 
   return pass.getAsBuffer();

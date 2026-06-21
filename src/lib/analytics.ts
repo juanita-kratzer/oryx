@@ -86,7 +86,9 @@ export async function logCardAnalyticsEvent(
     | "exchange_form_view"
     | "exchange_submitted"
     | "reciprocal_pass_offer"
-    | "reciprocal_pass_download",
+    | "reciprocal_pass_download"
+    | "qr_barcode_card_created"
+    | "qr_barcode_scanned",
   metadata?: Record<string, unknown>
 ): Promise<void> {
   await prisma.systemEvent.create({

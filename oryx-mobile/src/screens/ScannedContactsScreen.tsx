@@ -21,6 +21,7 @@ import {
   fetchBusinessCardExchanges,
   type BusinessCardExchangeLead,
 } from "../lib/exchangesApi";
+import { useTabBarInsets } from "../lib/screenInsets";
 import { useTheme } from "../contexts/ThemeContext";
 import type { BrandColors } from "../constants/colors";
 import type { MainTabParamList, RootStackParamList } from "../types";
@@ -41,7 +42,6 @@ function createStyles(colors: BrandColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: {
-      paddingTop: 56,
       paddingBottom: 12,
     },
     title: { fontSize: 28, fontWeight: "800", color: colors.text },
@@ -58,7 +58,7 @@ function createStyles(colors: BrandColors) {
       borderColor: colors.border,
     },
     scanActionText: { fontSize: 15, fontWeight: "600", color: colors.text },
-    list: { paddingHorizontal: 16, paddingBottom: 100 },
+    list: { paddingHorizontal: 16 },
     listEmpty: { flexGrow: 1 },
     sectionTitle: {
       fontSize: 13,
@@ -109,6 +109,7 @@ function createStyles(colors: BrandColors) {
 export function ScannedContactsScreen() {
   const navigation = useNavigation<Nav>();
   const { colors } = useTheme();
+  const { headerTopPadding, listBottomPadding } = useTabBarInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [scannedContacts, setScannedContacts] = useState<ScannedContact[]>([]);
   const [exchangeContacts, setExchangeContacts] = useState<
@@ -183,6 +184,10 @@ export function ScannedContactsScreen() {
         }
         contentContainerStyle={[
           styles.list,
+          {
+            paddingTop: headerTopPadding,
+            paddingBottom: listBottomPadding,
+          },
           isEmpty && styles.listEmpty,
         ]}
         stickySectionHeadersEnabled={false}

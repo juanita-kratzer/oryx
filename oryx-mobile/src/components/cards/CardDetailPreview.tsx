@@ -1,8 +1,11 @@
 import React from "react";
 import { View, Text, StyleSheet, useWindowDimensions } from "react-native";
 import { AppleWalletPreview } from "../businessCard/AppleWalletPreview";
+import { QrBarcodeCardPreview } from "../qrBarcode/QrBarcodeCardPreview";
 import { CardRenderer } from "../../engine/CardRenderer";
 import { TEMPLATE_REGISTRY } from "../../templates";
+import { QR_BARCODE_CARD_TEMPLATE_ID } from "../../constants/cardTemplates";
+import { inferDisplayCodeKind } from "../../lib/barcodeUtils";
 import { AMBTN_DEFAULT_THEME_COLOR } from "../../constants/ambtnThemeColors";
 import { getCardQrPayload } from "../../lib/cardLinks";
 import { BRAND } from "../../constants/colors";
@@ -42,6 +45,30 @@ export function CardDetailPreview({ card }: Props) {
           website: card.website ?? "",
           logoUri: card.logoUrl,
           backgroundColor: card.backgroundColor ?? AMBTN_DEFAULT_THEME_COLOR,
+        }}
+      />
+    );
+  }
+
+  if (card.templateId === QR_BARCODE_CARD_TEMPLATE_ID) {
+    const barcodeValue = card.fieldValues?.barcodeValue ?? "";
+    const displayKind =
+      (card.fieldValues?.displayKind as "qr" | "barcode") ||
+      inferDisplayCodeKind(barcodeValue);
+
+    return (
+      <QrBarcodeCardPreview
+        data={{
+          cardName: card.name ?? "",
+          organisation: card.business ?? "",
+          membershipNumber: card.fieldValues?.membershipNumber ?? "",
+          barcodeValue,
+          expiryDate: card.fieldValues?.expiryDate ?? "",
+          notes: card.fieldValues?.notes ?? "",
+          logoUri: card.logoUrl,
+          backgroundColor: card.backgroundColor ?? AMBTN_DEFAULT_THEME_COLOR,
+          displayKind,
+          scannedType: card.fieldValues?.scannedType ?? null,
         }}
       />
     );

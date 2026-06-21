@@ -2,6 +2,7 @@ import { getFirestore, getAuth, firestore } from "./firebase";
 import type { FirebaseFirestoreTypes } from "@react-native-firebase/firestore";
 import type { Card } from "../types";
 import { buildCardLinkFields } from "./cardLinks";
+import { isPrivateCardTemplate } from "../constants/cardTemplates";
 
 function getUid(): string {
   const user = getAuth().currentUser;
@@ -21,7 +22,10 @@ function serverTimestamp() {
 function docToCard(doc: FirebaseFirestoreTypes.DocumentSnapshot): Card {
   const data = doc.data()!;
   const slug = data.slug || doc.id;
-  const links = buildCardLinkFields(slug);
+  const privateCard = isPrivateCardTemplate(data.templateId);
+  const links = privateCard
+    ? { publicUrl: null, nfcUrl: null, qrUrl: null }
+    : buildCardLinkFields(slug);
   return {
     id: doc.id,
     slug,
@@ -77,12 +81,15 @@ export async function createCard(data: {
   allowSmartExchange?: boolean;
 }): Promise<Card> {
   const slug = data.slug;
-  const linkFields = slug ? buildCardLinkFields(slug) : {};
+  const privateCard = isPrivateCardTemplate(data.templateId);
+  const linkFields = privateCard || !slug ? {} : buildCardLinkFields(slug);
   const docRef = await cardsCollection().add({
     ...data,
     slug,
     ...linkFields,
-    allowSmartExchange: data.allowSmartExchange ?? true,
+    allowSmartExchange: privateCard
+      ? false
+      : data.allowSmartExchange ?? true,
     status: "PAID",
     purchaseId: "build_test",
     createdAt: serverTimestamp(),
@@ -96,7 +103,7 @@ export async function createCard(data: {
   if (!slug) {
     await docRef.update({
       slug: docRef.id,
-      ...buildCardLinkFields(docRef.id),
+      ...(privateCard ? {} : buildCardLinkFields(docRef.id)),
       updatedAt: serverTimestamp(),
     });
   }
@@ -121,10 +128,12 @@ export async function updateCard(
   const ref = cardsCollection().doc(id);
   const existing = await ref.get();
   if (!existing.exists) throw new Error("Card not found");
-  const slug = data.slug || existing.data()?.slug || id;
+  const existingData = existing.data()!;
+  const slug = existingData.slug || id;
+  const privateCard = isPrivateCardTemplate(existingData.templateId);
   await ref.update({
     ...data,
-    ...buildCardLinkFields(slug),
+    ...(privateCard ? {} : buildCardLinkFields(slug)),
     slug,
     updatedAt: serverTimestamp(),
   });
@@ -139,10 +148,11 @@ export async function markCardPaid(
   const ref = cardsCollection().doc(cardId);
   const existing = await ref.get();
   const slug = existing.data()?.slug || cardId;
+  const privateCard = isPrivateCardTemplate(existing.data()?.templateId);
   await ref.update({
     status: "PAID",
     purchaseId: transactionId,
-    ...buildCardLinkFields(slug),
+    ...(privateCard ? {} : buildCardLinkFields(slug)),
     updatedAt: serverTimestamp(),
   });
   const doc = await ref.get();

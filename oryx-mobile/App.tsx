@@ -1,5 +1,6 @@
 import React from "react";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
   NavigationContainer,
   DarkTheme,
@@ -9,7 +10,6 @@ import {
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { StatusBar } from "expo-status-bar";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
-import { WebDevBanner } from "./src/components/WebDevBanner";
 import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
 import { ThemeProvider, useTheme } from "./src/contexts/ThemeContext";
 import { SignInScreen } from "./src/screens/SignInScreen";
@@ -173,25 +173,21 @@ function ThemedApp() {
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <ThemeProvider>
-        <View style={styles.root}>
-          <WebDevBanner />
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <ThemeProvider>
           <View style={styles.app}>
             <AuthProvider>
               <ThemedApp />
             </AuthProvider>
           </View>
-        </View>
-      </ThemeProvider>
-    </ErrorBoundary>
+        </ThemeProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
   app: {
     flex: 1,
   },

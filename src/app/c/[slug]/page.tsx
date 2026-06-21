@@ -7,6 +7,7 @@ import { buildVcard } from "@/lib/vcard";
 import { getCardPublicUrl } from "@/lib/cardLinks";
 import { parseVisitSource } from "@/lib/cardVisitSource";
 import { CardLandingClient } from "@/components/cards/CardLandingClient";
+import { QR_BARCODE_POSTGRES_SLUG } from "@/lib/cardTemplates";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -19,7 +20,7 @@ async function getCard(slug: string) {
   return prisma.card.findFirst({
     where: { slug, status: "PAID" },
     include: {
-      template: { select: { name: true, category: true } },
+      template: { select: { name: true, category: true, slug: true } },
     },
   });
 }
@@ -47,6 +48,10 @@ export default async function CardLandingPage({ params, searchParams }: Props) {
   const card = await getCard(slug);
 
   if (!card) {
+    notFound();
+  }
+
+  if (card.template.slug === QR_BARCODE_POSTGRES_SLUG) {
     notFound();
   }
 

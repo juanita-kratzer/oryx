@@ -9,9 +9,9 @@ import {
   Linking,
   ScrollView,
   Share,
-  Switch,
   Modal,
 } from "react-native";
+import { AppSwitch } from "../components/AppSwitch";
 import { FileSystem } from "../lib/fileSystem";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
@@ -20,6 +20,7 @@ import { getAuth } from "../lib/firebase";
 import { SmartExchangeSection } from "../components/cards/SmartExchangeSection";
 import { CardDetailPreview } from "../components/cards/CardDetailPreview";
 import { getCardPublicUrl } from "../lib/cardLinks";
+import { QR_BARCODE_CARD_TEMPLATE_ID } from "../constants/cardTemplates";
 import { syncCardToApi, deleteCardFromApi } from "../lib/cardSync";
 import { notifyCardsChanged } from "../lib/cardsEvents";
 import { BRAND } from "../constants/colors";
@@ -223,6 +224,7 @@ export function CardDeliveryScreen({ route, navigation }: Props) {
   }
 
   const isBusinessCard = card.templateId === "business";
+  const isQrBarcodeCard = card.templateId === QR_BARCODE_CARD_TEMPLATE_ID;
   const shareUrl = card.publicUrl ?? getCardPublicUrl(card.slug);
   const displayName = card.name || card.business || "Your Card";
 
@@ -247,7 +249,30 @@ export function CardDeliveryScreen({ route, navigation }: Props) {
         <Text style={styles.editButtonText}>Edit card</Text>
       </Pressable>
 
-      {isBusinessCard ? (
+      {isQrBarcodeCard ? (
+        <View style={styles.settingsCard}>
+          <Text style={styles.settingsHint}>
+            This membership card is private to your account. The scannable code is
+            stored for your use only — it is not shared via a public link or Smart
+            Exchange.
+          </Text>
+          <Pressable
+            style={({ pressed }) => [
+              styles.walletBtn,
+              pressed && styles.pressed,
+              downloading && styles.disabled,
+            ]}
+            onPress={handleAddToWallet}
+            disabled={downloading}
+          >
+            {downloading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.walletBtnText}>Add to Apple Wallet</Text>
+            )}
+          </Pressable>
+        </View>
+      ) : isBusinessCard ? (
         <>
           <SmartExchangeSection
             displayName={displayName}
@@ -264,13 +289,10 @@ export function CardDeliveryScreen({ route, navigation }: Props) {
               <View style={styles.settingText}>
                 <Text style={styles.settingLabel}>Allow Smart Exchange</Text>
               </View>
-              <Switch
+              <AppSwitch
                 value={card.allowSmartExchange}
                 onValueChange={handleToggleSmartExchange}
                 disabled={updatingExchange}
-                trackColor={{ false: BRAND.border, true: BRAND.text }}
-                thumbColor="#ffffff"
-                ios_backgroundColor={BRAND.border}
               />
             </View>
           </View>
@@ -341,6 +363,14 @@ const styles = StyleSheet.create({
   },
   settingText: { flex: 1 },
   settingLabel: { fontSize: 16, fontWeight: "600", color: BRAND.text },
+  walletBtn: {
+    backgroundColor: BRAND.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  walletBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   deleteButton: {
     marginTop: 8,
     borderWidth: 1,

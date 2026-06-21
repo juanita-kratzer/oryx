@@ -3,23 +3,30 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  SectionList,
   Pressable,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { TEMPLATE_REGISTRY } from "../templates";
+import { TEMPLATE_GALLERY_SECTIONS } from "../data/templateGallery";
 import { BRAND } from "../constants/colors";
 import type { RootStackParamList } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "TemplateGallery">;
 
 export function TemplateGalleryScreen({ navigation }: Props) {
+  const sections = TEMPLATE_GALLERY_SECTIONS.map((section) => ({
+    title: section.title,
+    subtitle: section.subtitle,
+    data: section.templates,
+  }));
+
   return (
     <View style={styles.container}>
-      <FlatList
-        data={TEMPLATE_REGISTRY}
+      <SectionList
+        sections={sections}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        stickySectionHeadersEnabled={false}
         ListHeaderComponent={
           <View style={styles.header}>
             <Text style={styles.title}>Choose a Template</Text>
@@ -28,25 +35,37 @@ export function TemplateGalleryScreen({ navigation }: Props) {
             </Text>
           </View>
         }
-        renderItem={({ item, index }) => (
-          <Pressable
-            style={({ pressed }) => [
-              styles.row,
-              index === 0 && styles.rowFirst,
-              index === TEMPLATE_REGISTRY.length - 1 && styles.rowLast,
-              pressed && styles.rowPressed,
-            ]}
-            onPress={() =>
-              navigation.navigate("CardEditor", { templateId: item.id })
-            }
-          >
-            <View style={styles.rowContent}>
-              <Text style={styles.rowTitle}>{item.name}</Text>
-              <Text style={styles.rowDescription}>{item.description}</Text>
-            </View>
-            <Text style={styles.rowChevron}>›</Text>
-          </Pressable>
+        renderSectionHeader={({ section }) => (
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            {section.subtitle ? (
+              <Text style={styles.sectionSubtitle}>{section.subtitle}</Text>
+            ) : null}
+          </View>
         )}
+        renderItem={({ item, index, section }) => {
+          const isFirst = index === 0;
+          const isLast = index === section.data.length - 1;
+          return (
+            <Pressable
+              style={({ pressed }) => [
+                styles.row,
+                isFirst && styles.rowFirst,
+                isLast && styles.rowLast,
+                pressed && styles.rowPressed,
+              ]}
+              onPress={() =>
+                navigation.navigate("CardEditor", { templateId: item.id })
+              }
+            >
+              <View style={styles.rowContent}>
+                <Text style={styles.rowTitle}>{item.name}</Text>
+                <Text style={styles.rowDescription}>{item.description}</Text>
+              </View>
+              <Text style={styles.rowChevron}>›</Text>
+            </Pressable>
+          );
+        }}
       />
     </View>
   );
@@ -62,6 +81,24 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   list: { padding: 16, paddingBottom: 32 },
+  sectionHeader: {
+    paddingHorizontal: 4,
+    paddingTop: 8,
+    paddingBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: BRAND.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: BRAND.textSecondary,
+    marginTop: 6,
+    lineHeight: 18,
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -81,6 +118,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14,
+    marginBottom: 16,
   },
   rowPressed: { opacity: 0.9 },
   rowContent: { flex: 1 },
