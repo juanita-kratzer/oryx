@@ -1,0 +1,11 @@
+oryx-mobile/ios
+oryx-mobile/android
+oryx-mobile/node_modules
+oryx-mobile/.expo
+**/Pods
+**/.next
+node_modules
+.git
+docs
+*.md
+!README.md

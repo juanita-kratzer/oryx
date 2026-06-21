@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     existing?.slug ||
     (await generateUniqueSlug());
 
-  const status = body.status === "PAID" ? "PAID" : "DRAFT";
+  const status: CardStatus = body.status === "PAID" ? "PAID" : "DRAFT";
 
   const data = {
     userId: user.id,
