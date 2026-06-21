@@ -1,26 +1,24 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { listActiveTemplates } from "@/lib/templates";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const templates = await prisma.template.findMany({
-    where: { active: true },
-    orderBy: { sortOrder: "asc" },
-    select: {
-      id: true,
-      slug: true,
-      name: true,
-      description: true,
-      category: true,
-      thumbnailUrl: true,
-      previewImageUrl: true,
-      editableFields: true,
-      colorOptions: true,
-      defaultBgColor: true,
-      premium: true,
-    },
-  });
+  const templates = listActiveTemplates().map(
+    ({ id, slug, name, description, category, thumbnailUrl, previewImageUrl, editableFields, colorOptions, defaultBgColor, premium }) => ({
+      id,
+      slug,
+      name,
+      description,
+      category,
+      thumbnailUrl,
+      previewImageUrl,
+      editableFields,
+      colorOptions,
+      defaultBgColor,
+      premium,
+    })
+  );
 
   return NextResponse.json(templates);
 }

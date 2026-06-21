@@ -7,11 +7,9 @@ import { PKPass } from "passkit-generator";
 import { getPassKitCertificates, getPassKitIds } from "./signer";
 import { normalizePassBackgroundColor } from "./backgroundColor";
 import { getCardWalletUrl } from "@/lib/cardLinks";
-import { isQrBarcodeCardTemplate, QR_BARCODE_POSTGRES_SLUG } from "@/lib/cardTemplates";
+import { isQrBarcodeCardTemplate, QR_BARCODE_TEMPLATE_SLUG } from "@/lib/cardTemplates";
 import { normalizeWalletBarcodeFormat } from "@/lib/passkit/barcodeFormats";
-import type { Card, Template } from "@prisma/client";
-
-type CardWithTemplate = Card & { template: Template };
+import type { CardWithTemplate } from "@/lib/firestore/types";
 
 async function fetchImageBuffer(url: string): Promise<Buffer> {
   const res = await fetch(url, {
@@ -25,7 +23,7 @@ async function fetchImageBuffer(url: string): Promise<Buffer> {
  * Resolve a field path like "name", "business", or "fieldValues.title"
  * against the card record.
  */
-function resolveFieldValue(card: Card, fieldPath: string): string | null {
+function resolveFieldValue(card: CardWithTemplate, fieldPath: string): string | null {
   if (fieldPath.startsWith("fieldValues.")) {
     const key = fieldPath.slice("fieldValues.".length);
     const fv = card.fieldValues as Record<string, string> | null;
@@ -47,7 +45,7 @@ type PassLayout = {
 function populateFields(
   passFieldArray: PKPass["primaryFields"],
   defs: PassFieldDef[],
-  card: Card
+  card: CardWithTemplate
 ) {
   if (!passFieldArray) return;
   for (const def of defs) {
@@ -104,7 +102,7 @@ export async function buildPass(card: CardWithTemplate): Promise<Buffer> {
   if (layout.backFields) populateFields(pass.backFields, layout.backFields, card);
 
   const isQrBarcode =
-    card.template.slug === QR_BARCODE_POSTGRES_SLUG ||
+    card.template.slug === QR_BARCODE_TEMPLATE_SLUG ||
     isQrBarcodeCardTemplate(
       (card.fieldValues as Record<string, string> | null)?.cardKind
     );

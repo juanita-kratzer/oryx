@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { getTemplateById } from "@/lib/templates";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
   const { id } = await params;
-
-  const template = await prisma.template.findFirst({
-    where: { OR: [{ id }, { slug: id }], active: true },
-  });
+  const template = getTemplateById(id);
 
   if (!template) {
     return NextResponse.json({ error: "Template not found" }, { status: 404 });

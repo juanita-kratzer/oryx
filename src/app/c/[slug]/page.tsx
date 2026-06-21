@@ -1,13 +1,13 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { prisma } from "@/lib/db";
+import { findPublicCardBySlug } from "@/lib/firestore/cards";
 import { recordLandingVisit } from "@/lib/analytics";
 import { buildMetadata } from "@/lib/metadata";
 import { buildVcard } from "@/lib/vcard";
 import { getCardPublicUrl } from "@/lib/cardLinks";
 import { parseVisitSource } from "@/lib/cardVisitSource";
 import { CardLandingClient } from "@/components/cards/CardLandingClient";
-import { QR_BARCODE_POSTGRES_SLUG } from "@/lib/cardTemplates";
+import { isQrBarcodeCardTemplate } from "@/lib/cardTemplates";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -17,12 +17,7 @@ type Props = {
 export const revalidate = 300;
 
 async function getCard(slug: string) {
-  return prisma.card.findFirst({
-    where: { slug, status: "PAID" },
-    include: {
-      template: { select: { name: true, category: true, slug: true } },
-    },
-  });
+  return findPublicCardBySlug(slug);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -51,7 +46,7 @@ export default async function CardLandingPage({ params, searchParams }: Props) {
     notFound();
   }
 
-  if (card.template.slug === QR_BARCODE_POSTGRES_SLUG) {
+  if (isQrBarcodeCardTemplate(card.template.slug)) {
     notFound();
   }
 
@@ -59,11 +54,11 @@ export default async function CardLandingPage({ params, searchParams }: Props) {
 
   const fieldValues = (card.fieldValues ?? {}) as Record<string, string>;
   const vcardData = buildVcard({
-    name: card.name,
-    business: card.business,
-    phone: card.phone,
-    email: card.email,
-    website: card.website,
+    name: card.name ?? null,
+    business: card.business ?? null,
+    phone: card.phone ?? null,
+    email: card.email ?? null,
+    website: card.website ?? null,
   });
   const vcardHref = `data:text/vcard;charset=utf-8,${encodeURIComponent(vcardData)}`;
   const qrUrl = getCardPublicUrl(card.slug, "qr");
@@ -77,14 +72,14 @@ export default async function CardLandingPage({ params, searchParams }: Props) {
         slug={slug}
         qrUrl={qrUrl}
         visitSource={visitSource}
-        allowSmartExchange={card.allowSmartExchange}
-        logoUrl={card.logoUrl}
-        name={card.name}
-        business={card.business}
-        phone={card.phone}
-        email={card.email}
-        website={card.website}
-        backgroundColor={card.backgroundColor}
+        allowSmartExchange={card.allowSmartExchange ?? true}
+        logoUrl={card.logoUrl ?? null}
+        name={card.name ?? null}
+        business={card.business ?? null}
+        phone={card.phone ?? null}
+        email={card.email ?? null}
+        website={card.website ?? null}
+        backgroundColor={card.backgroundColor ?? null}
         fieldValues={fieldValues}
         vcardHref={vcardHref}
       />

@@ -42,7 +42,10 @@ export async function syncCardToApi(card: Card): Promise<void> {
   });
 }
 
-export async function deleteCardFromApi(externalId: string): Promise<void> {
+export async function deleteCardFromApi(
+  externalId: string,
+  slug?: string | null
+): Promise<void> {
   const base = getApiBaseUrl();
   if (!base) return;
 
@@ -57,7 +60,7 @@ export async function deleteCardFromApi(externalId: string): Promise<void> {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ externalId }),
+    body: JSON.stringify({ externalId, slug: slug ?? undefined }),
   });
 
   if (!res.ok) {

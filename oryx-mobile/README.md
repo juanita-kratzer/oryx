@@ -1,37 +1,29 @@
-# Oryx - Apple Wallet Cards (Mobile)
+# Oryx Mobile
 
-Native mobile app built with Expo + Supabase (auth + cards).
+Native mobile app built with **Expo + Firebase** (Auth, Firestore, Storage).
 
 ## Setup
 
-### 1. Install dependencies
+1. Copy `.env.example` to `.env` and set:
+   - **EXPO_PUBLIC_APP_URL** — Next.js API URL (production or your Mac LAN IP for local dev)
+   - **APPLE_TEAM_ID** — for Xcode signing
+
+2. Add **GoogleService-Info.plist** (from Firebase Console) to `oryx-mobile/`.
+
+3. Install and run:
 
 ```bash
 npm install
+npm run start:dev    # Metro
+npm run ios          # iOS device/simulator
 ```
 
-### 2. Configure environment
+## Backend
 
-Copy `.env.example` to `.env` and fill in:
+Cards, contacts, and exchanges are stored in **Firestore**. The Next.js API (`/api/*`) reads the same Firestore data for public landing pages, PassKit, and Smart Exchange — authenticated via **Firebase ID tokens**.
 
-- **EXPO_PUBLIC_SUPABASE_URL** / **EXPO_PUBLIC_SUPABASE_ANON_KEY** – From [Supabase](https://supabase.com/dashboard)
-- **EXPO_PUBLIC_APP_URL** – Web app URL (for Add to Wallet and logo upload)
-
-### 3. Run Supabase schema
-
-Run `oryx-mobile-supabase-schema.sql` in the Supabase SQL Editor.
-
-## Run
+Deploy Firestore rules and indexes from the repo root:
 
 ```bash
-npx expo run:ios
+firebase deploy --only firestore
 ```
-
-For subsequent runs: `npm start`, then open the app from the simulator.
-
-## What's built
-
-- ✅ Supabase Auth (Sign in, Sign up, Sign out)
-- ✅ Create card (name, business, email, phone, website, logo, colour)
-- ✅ Add to Apple Wallet
-- ✅ Cards stored in Supabase (persist across devices)

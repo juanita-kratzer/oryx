@@ -1,15 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { findOwnerCard } from "@/lib/firestore/cards";
+import { getFirestoreAdmin } from "@/lib/firebaseAdmin";
 
 type Params = { params: Promise<{ id: string }> };
 
-/**
- * Mark a card as PAID after RevenueCat purchase verification.
- * The mobile app calls this after a successful IAP, passing the transaction ID.
- * Full server-side receipt validation with RevenueCat API can be added
- * once product identifiers are configured.
- */
 export async function POST(request: Request, { params }: Params) {
   const user = await getCurrentUser(request);
   if (!user) {
@@ -17,11 +12,8 @@ export async function POST(request: Request, { params }: Params) {
   }
 
   const { id } = await params;
-
-  const card = await prisma.card.findFirst({
-    where: { id, userId: user.id, status: "DRAFT" },
-  });
-  if (!card) {
+  const card = await findOwnerCard(user.uid, id);
+  if (!card || card.status !== "DRAFT") {
     return NextResponse.json({ error: "Card not found or already paid" }, { status: 404 });
   }
 
@@ -36,21 +28,13 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ error: "transactionId is required" }, { status: 400 });
   }
 
-  // TODO: Verify transaction with RevenueCat REST API
-  // POST https://api.revenuecat.com/v1/receipts
-  // This ensures the purchase is legitimate before marking PAID.
-  // For now, trust the client (add verification once RC keys are set up).
-
-  const updated = await prisma.card.update({
-    where: { id },
-    data: {
-      status: "PAID",
-      purchaseId: body.transactionId,
-    },
-    include: {
-      template: true,
-    },
+  const db = getFirestoreAdmin();
+  await db.collection("users").doc(user.uid).collection("cards").doc(id).update({
+    status: "PAID",
+    purchaseId: body.transactionId,
+    updatedAt: new Date(),
   });
 
+  const updated = await findOwnerCard(user.uid, id);
   return NextResponse.json(updated);
 }

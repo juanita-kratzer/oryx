@@ -1,10 +1,11 @@
-import type { Card, Template } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import type { CardWithTemplate } from "@/lib/firestore/types";
+import { getStorageBucket } from "@/lib/firebaseAdmin";
 import { buildPass } from "@/lib/passkit/buildPass";
-import { recordPassDownload, logCardAnalyticsEvent } from "@/lib/analytics";
-import { getSupabaseAdmin, BUCKET_PASSES } from "@/lib/supabase";
-
-export type CardWithTemplate = Card & { template: Template };
+import {
+  recordPassDownload,
+  logCardAnalyticsEvent,
+} from "@/lib/analytics";
+import { updateApplePassMeta } from "@/lib/firestore/cards";
 
 function passResponseHeaders(slug: string): HeadersInit {
   return {
@@ -20,15 +21,13 @@ export async function deliverApplePass(
   card: CardWithTemplate,
   options?: { analyticsContext?: "owner" | "reciprocal" }
 ): Promise<Response> {
-  const existingPass = await prisma.pass.findFirst({
-    where: { cardId: card.id, platform: "APPLE" },
-    orderBy: { createdAt: "desc" },
-  });
+  const existingPass = card.passes?.apple;
+  const cardUpdatedAt = card.updatedAt ?? new Date(0);
 
   if (
     existingPass?.fileUrl &&
     existingPass.generatedAt &&
-    existingPass.generatedAt >= card.updatedAt
+    new Date(existingPass.generatedAt) >= cardUpdatedAt
   ) {
     return Response.redirect(existingPass.fileUrl, 302);
   }
@@ -42,44 +41,26 @@ export async function deliverApplePass(
     }).catch(() => {});
   }
 
-  const supabase = getSupabaseAdmin();
-  const fileName = `${card.id}/pass-v${(existingPass?.version ?? 0) + 1}.pkpass`;
-  const { error: uploadError } = await supabase.storage
-    .from(BUCKET_PASSES)
-    .upload(fileName, new Uint8Array(buffer), {
+  const version = (existingPass?.version ?? 0) + 1;
+  const fileName = `passes/${card.ownerId}/${card.id}/pass-v${version}.pkpass`;
+
+  try {
+    const bucket = getStorageBucket();
+    const file = bucket.file(fileName);
+    await file.save(Buffer.from(buffer), {
       contentType: "application/vnd.apple.pkpass",
-      upsert: true,
+      metadata: { cacheControl: "public, max-age=3600" },
     });
+    await file.makePublic();
+    const fileUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
 
-  if (uploadError) {
-    console.error("Pass upload error:", uploadError);
-    return new Response(new Uint8Array(buffer), {
-      headers: passResponseHeaders(card.slug),
+    await updateApplePassMeta(card.ownerId, card.id, {
+      fileUrl,
+      version,
+      generatedAt: new Date().toISOString(),
     });
-  }
-
-  const { data: urlData } = supabase.storage.from(BUCKET_PASSES).getPublicUrl(fileName);
-  const fileUrl = urlData.publicUrl;
-
-  if (existingPass) {
-    await prisma.pass.update({
-      where: { id: existingPass.id },
-      data: {
-        fileUrl,
-        version: existingPass.version + 1,
-        generatedAt: new Date(),
-      },
-    });
-  } else {
-    await prisma.pass.create({
-      data: {
-        cardId: card.id,
-        platform: "APPLE",
-        fileUrl,
-        version: 1,
-        generatedAt: new Date(),
-      },
-    });
+  } catch (err) {
+    console.error("Pass upload error:", err);
   }
 
   return new Response(new Uint8Array(buffer), {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { findPublicCardBySlug } from "@/lib/firestore/cards";
 import { buildVcard } from "@/lib/vcard";
 import { recordVcardDownload } from "@/lib/analytics";
 
@@ -7,11 +7,7 @@ type Params = { params: Promise<{ slug: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
   const { slug } = await params;
-
-  const card = await prisma.card.findFirst({
-    where: { slug, status: "PAID" },
-    select: { id: true, name: true, business: true, phone: true, email: true, website: true },
-  });
+  const card = await findPublicCardBySlug(slug);
 
   if (!card) {
     return NextResponse.json({ error: "Card not found" }, { status: 404 });
@@ -20,11 +16,11 @@ export async function GET(_request: Request, { params }: Params) {
   recordVcardDownload(card.id).catch(() => {});
 
   const vcard = buildVcard({
-    name: card.name,
-    business: card.business,
-    phone: card.phone,
-    email: card.email,
-    website: card.website,
+    name: card.name ?? null,
+    business: card.business ?? null,
+    phone: card.phone ?? null,
+    email: card.email ?? null,
+    website: card.website ?? null,
   });
 
   return new NextResponse(vcard, {

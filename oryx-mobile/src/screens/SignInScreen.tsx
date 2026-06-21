@@ -12,6 +12,8 @@ import {
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { getAuth } from "../lib/firebase";
+import { formatFirebaseAuthError } from "../lib/firebaseAuthErrors";
+import { GoogleSignInButton, AuthDivider } from "../components/GoogleSignInButton";
 import { BRAND } from "../constants/colors";
 import type { RootStackParamList } from "../types";
 
@@ -24,14 +26,20 @@ export function SignInScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const handleSignIn = async () => {
-    if (!email || !password) return;
+    if (!email.trim()) {
+      setError("Enter your email address.");
+      return;
+    }
+    if (!password) {
+      setError("Enter your password.");
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
       await getAuth().signInWithEmailAndPassword(email.trim(), password);
-    } catch (e: any) {
-      const msg = e?.message || "Sign in failed";
-      setError(msg.replace(/\[.*?\]\s*/, ""));
+    } catch (e: unknown) {
+      setError(formatFirebaseAuthError(e));
     } finally {
       setLoading(false);
     }
@@ -48,6 +56,13 @@ export function SignInScreen({ navigation }: Props) {
       >
         <Text style={styles.title}>Oryx</Text>
         <Text style={styles.subtitle}>Sign in to your account</Text>
+
+        <GoogleSignInButton
+          disabled={loading}
+          onError={(message) => setError(message)}
+        />
+
+        <AuthDivider />
 
         <Text style={styles.label}>Email</Text>
         <TextInput

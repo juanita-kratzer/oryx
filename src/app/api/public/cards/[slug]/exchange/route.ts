@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { findPublicCardBySlug, getOwnerEmail } from "@/lib/firestore/cards";
+import { createBusinessCardExchange } from "@/lib/firestore/exchanges";
 import { logCardAnalyticsEvent } from "@/lib/analytics";
 import { sendExchangeNotificationEmail } from "@/lib/email/exchangeNotification";
 import { isValidEmail, sanitizeOptionalText, sanitizeText } from "@/lib/sanitize";
@@ -87,14 +88,7 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Invalid email address." }, { status: 400 });
   }
 
-  const card = await prisma.card.findFirst({
-    where: { slug, status: "PAID" },
-    include: {
-      user: { select: { id: true, email: true } },
-      template: { select: { name: true, category: true } },
-    },
-  });
-
+  const card = await findPublicCardBySlug(slug);
   if (!card) {
     return NextResponse.json({ error: "Card not found." }, { status: 404 });
   }
@@ -108,19 +102,17 @@ export async function POST(request: Request, { params }: Params) {
 
   const source = parseExchangeSource(body.source);
 
-  const exchange = await prisma.businessCardExchange.create({
-    data: {
-      cardId: card.id,
-      ownerId: card.userId,
-      name,
-      phone,
-      email,
-      company,
-      jobTitle,
-      notes,
-      consentGiven: true,
-      source,
-    },
+  const exchange = await createBusinessCardExchange({
+    ownerId: card.ownerId,
+    cardId: card.id,
+    cardSlug: card.slug,
+    name,
+    phone,
+    email,
+    company,
+    jobTitle,
+    notes,
+    source,
   });
 
   logCardAnalyticsEvent(card.id, "exchange_submitted", {
@@ -128,7 +120,7 @@ export async function POST(request: Request, { params }: Params) {
     source,
   }).catch(() => {});
 
-  const ownerEmail = card.user.email;
+  const ownerEmail = (await getOwnerEmail(card.ownerId)) ?? card.email;
   if (ownerEmail) {
     sendExchangeNotificationEmail({
       to: ownerEmail,

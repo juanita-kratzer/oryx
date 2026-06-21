@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { getSupabaseAdmin, BUCKET_CARDS } from "@/lib/supabase";
+import { findOwnerCard } from "@/lib/firestore/cards";
+import { getStorageBucket } from "@/lib/firebaseAdmin";
+import { getFirestoreAdmin } from "@/lib/firebaseAdmin";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -15,10 +16,7 @@ export async function POST(request: Request, { params }: Params) {
   }
 
   const { id } = await params;
-  const card = await prisma.card.findFirst({
-    where: { id, userId: user.id },
-  });
-
+  const card = await findOwnerCard(user.uid, id);
   if (!card) {
     return NextResponse.json({ error: "Card not found" }, { status: 404 });
   }
@@ -28,7 +26,12 @@ export async function POST(request: Request, { params }: Params) {
   if (!file || typeof file === "string") {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
-  const uploadFile = file as { size: number; type: string; name: string; arrayBuffer: () => Promise<ArrayBuffer> };
+  const uploadFile = file as {
+    size: number;
+    type: string;
+    name: string;
+    arrayBuffer: () => Promise<ArrayBuffer>;
+  };
 
   if (uploadFile.size === 0) {
     return NextResponse.json({ error: "No file or empty file" }, { status: 400 });
@@ -43,28 +46,29 @@ export async function POST(request: Request, { params }: Params) {
   }
 
   const ext = uploadFile.name.split(".").pop() || "jpg";
-  const path = `${user.id}/${card.id}/logo-${Date.now()}.${ext}`;
-
-  const supabase = getSupabaseAdmin();
+  const path = `cards/${user.uid}/${id}/logo-${Date.now()}.${ext}`;
   const buffer = Buffer.from(await uploadFile.arrayBuffer());
 
-  const { data, error } = await supabase.storage
-    .from(BUCKET_CARDS)
-    .upload(path, buffer, { contentType: file.type, upsert: true });
+  try {
+    const bucket = getStorageBucket();
+    const gcsFile = bucket.file(path);
+    await gcsFile.save(buffer, {
+      contentType: uploadFile.type,
+      metadata: { cacheControl: "public, max-age=86400" },
+    });
+    await gcsFile.makePublic();
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${path}`;
 
-  if (error) {
-    console.error("Supabase upload error:", error);
+    const db = getFirestoreAdmin();
+    await db.collection("users").doc(user.uid).collection("cards").doc(id).update({
+      logoUrl: publicUrl,
+      updatedAt: new Date(),
+    });
+
+    const updated = await findOwnerCard(user.uid, id);
+    return NextResponse.json({ url: publicUrl, card: updated });
+  } catch (err) {
+    console.error("Firebase upload error:", err);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
-
-  const { data: { publicUrl } } = supabase.storage
-    .from(BUCKET_CARDS)
-    .getPublicUrl(data.path);
-
-  const updated = await prisma.card.update({
-    where: { id },
-    data: { logoUrl: publicUrl },
-  });
-
-  return NextResponse.json({ url: publicUrl, card: updated });
 }

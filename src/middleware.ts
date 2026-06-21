@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 /**
  * Minimal middleware — no auth gating on web routes.
- * API routes handle their own auth via Supabase JWT.
+ * API routes handle their own auth via Firebase ID tokens.
  * Public routes (/c/[slug], /api/public/*) need no auth.
  */
 export function middleware() {

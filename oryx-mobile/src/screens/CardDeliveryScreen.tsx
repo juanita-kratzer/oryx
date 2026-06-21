@@ -140,7 +140,7 @@ export function CardDeliveryScreen({ route, navigation }: Props) {
     goToCards();
     try {
       await deleteCard(id);
-      await deleteCardFromApi(id);
+      await deleteCardFromApi(id, card?.slug);
       notifyCardsChanged();
     } catch (e) {
       deletedRef.current = false;

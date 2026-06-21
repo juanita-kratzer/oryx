@@ -1,11 +1,13 @@
 /**
- * Optional Firebase Admin for verifying mobile ID tokens.
+ * Firebase Admin — auth verification, Firestore, and Storage for the Next.js API.
  * Set FIREBASE_SERVICE_ACCOUNT_JSON to a JSON service account string.
  */
 
 import type { App } from "firebase-admin/app";
 import { getApps, initializeApp, cert } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 
 let adminApp: App | null = null;
 
@@ -25,12 +27,30 @@ function initAdmin(): App | null {
     const serviceAccount = JSON.parse(raw) as Record<string, string>;
     adminApp = initializeApp({
       credential: cert(serviceAccount),
+      storageBucket:
+        process.env.FIREBASE_STORAGE_BUCKET ||
+        serviceAccount.storageBucket ||
+        `${serviceAccount.project_id}.appspot.com`,
     });
     return adminApp;
   } catch (e) {
     console.warn("firebaseAdmin: failed to initialize", e);
     return null;
   }
+}
+
+export function getFirestoreAdmin() {
+  if (!initAdmin()) {
+    throw new Error("Firebase Admin is not configured (FIREBASE_SERVICE_ACCOUNT_JSON).");
+  }
+  return getFirestore();
+}
+
+export function getStorageBucket() {
+  if (!initAdmin()) {
+    throw new Error("Firebase Admin is not configured (FIREBASE_SERVICE_ACCOUNT_JSON).");
+  }
+  return getStorage().bucket();
 }
 
 export async function verifyFirebaseIdToken(

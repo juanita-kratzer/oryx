@@ -1,4 +1,3 @@
-import type { Card } from "@prisma/client";
 import type { CardVisitSource } from "@/lib/cardVisitSource";
 
 const APP_URL =
@@ -19,15 +18,15 @@ export function getCardPublicUrl(slug: string, source?: CardVisitSource): string
   return `${base}?src=${source}`;
 }
 
-export function getCardNfcUrl(card: Pick<Card, "slug">): string {
+export function getCardNfcUrl(card: { slug: string }): string {
   return getCardPublicUrl(card.slug, "nfc");
 }
 
-export function getCardQrPayload(card: Pick<Card, "slug">): string {
+export function getCardQrPayload(card: { slug: string }): string {
   return getCardPublicUrl(card.slug, "qr");
 }
 
-export function getCardWalletUrl(card: Pick<Card, "slug">): string {
+export function getCardWalletUrl(card: { slug: string }): string {
   return getCardPublicUrl(card.slug, "wallet");
 }
 

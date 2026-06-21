@@ -13,6 +13,8 @@ import {
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { getAuth } from "../lib/firebase";
 import { sendVerificationCode, verifyEmailCode } from "../lib/authApi";
+import { formatFirebaseAuthError } from "../lib/firebaseAuthErrors";
+import { GoogleSignInButton, AuthDivider } from "../components/GoogleSignInButton";
 import { BRAND } from "../constants/colors";
 import type { RootStackParamList } from "../types";
 
@@ -118,7 +120,7 @@ export function SignUpScreen({ navigation }: Props) {
       await getAuth().createUserWithEmailAndPassword(email.trim(), password);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Sign up failed";
-      setError(msg.replace(/\[.*?\]\s*/, ""));
+      setError(formatFirebaseAuthError(e) || msg);
     } finally {
       setLoading(false);
     }
@@ -142,6 +144,13 @@ export function SignUpScreen({ navigation }: Props) {
 
         {step === "details" ? (
           <>
+            <GoogleSignInButton
+              disabled={loading}
+              onError={(message) => setError(message)}
+            />
+
+            <AuthDivider />
+
             <Text style={styles.label}>Email</Text>
             <TextInput
               style={styles.input}

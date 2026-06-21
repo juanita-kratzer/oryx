@@ -59,19 +59,27 @@ export async function POST(request: Request) {
   const code = generateVerificationCode();
   const expiresAt = getCodeExpiryDate();
 
-  await createVerificationCode({
-    email,
-    codeHash: hashVerificationCode(code),
-    expiresAt,
-  });
-
   try {
+    await createVerificationCode({
+      email,
+      codeHash: hashVerificationCode(code),
+      expiresAt,
+    });
+
     await sendVerificationCodeEmail({ to: email, code, purpose });
   } catch (err) {
     console.error("send-verification-code:", err);
+    const message =
+      err instanceof Error ? err.message : "Could not send verification code.";
+    const isEmail =
+      message.includes("SendGrid") || message.includes("Email is not configured");
     return jsonWithCors(
-      { error: "Could not send verification email. Try again later." },
-      { status: 503 }
+      {
+        error: isEmail
+          ? "Could not send verification email. Try again later."
+          : "Could not process verification request. Try again later.",
+      },
+      { status: isEmail ? 503 : 500 }
     );
   }
 

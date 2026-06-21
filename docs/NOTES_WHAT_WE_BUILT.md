@@ -20,8 +20,8 @@ This file summarizes the Oryx Wallet Cards app and everything implemented so you
 - **Template library (kept, not all in gallery):** `oryx-mobile/src/templates/*` + `engine/CardRenderer` — event ticket, coupon, gift card, loyalty, gym membership/class pass, generic. Used for **preview** if old cards exist in Firestore; **not** editable in the app anymore.
 - **Next.js backend** (`src/`) serves public card landing pages, PassKit, Smart Exchange API, owner dashboard, and auth/email APIs used by mobile.
 - **Dual data stack:**
-  - **Mobile:** Firebase Auth + Firestore + Storage (cards, scanned contacts, legacy exchange requests).
-  - **Public web / PassKit / leads:** Supabase Postgres via Prisma (synced from mobile via `/api/cards/sync`).
+  - **Mobile + API:** Firebase Auth + Firestore + Storage (single source of truth).
+  - **Next.js API** reads/writes the same Firestore via `firebase-admin` (PassKit, public `/c/[slug]`, Smart Exchange, auth OTP).
 - Business Cards support **Smart Exchange** — present or share your card from the phone; recipient opens `/c/[slug]`, saves your contact, and can share details back. Transport (QR, link, Wallet, AirDrop, etc.) is flexible; outcome is what matters.
 - Users can **scan physical business cards** (OCR), review parsed contact info, and save to iPhone Contacts + Firestore.
 - **UI:** Ionicons only (no emojis). Bottom tabs: **Contacts** | **Cards** (center/home, raised) | **Account**. Light/dark mode toggles on Account use custom **`AppSwitch`** (black/white, not system green).
@@ -188,13 +188,16 @@ Three tabs: **Contacts** | **Cards** (center, raised circle) | **Account**.
 
 **Tuning history:** Avoid flat AMBTN-style bar (user preferred raised center). Fixed label clipping by increasing content height and safe-area padding; tightened icon–label gap; increased top screen padding for web preview (browser chrome has no notch inset).
 
-### Firestore (mobile)
+### Firestore (mobile + API)
 
-| Collection | Purpose |
-|------------|---------|
-| `users/{uid}/cards/{cardId}` | Mobile card documents |
+| Collection / path | Purpose |
+|-------------------|---------|
+| `users/{uid}/cards/{cardId}` | Cards (source of truth) |
+| `cardsBySlug/{slug}` | Public lookup index → `{ ownerId, cardId }` |
+| `businessCardExchanges/{id}` | Smart Exchange leads from `/c/[slug]` |
 | `users/{uid}/scannedContacts/{id}` | OCR-scanned contacts |
-| `publicCards/{cardId}` | Legacy published business card payload |
+| `cardDailyStats/{cardId_date}` | Landing / pass analytics |
+| `publicCards/{cardId}` | Legacy published business card mirror |
 | `exchangeRequests/{id}` | Legacy pending exchange requests |
 
 ---

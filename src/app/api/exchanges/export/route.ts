@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { findOwnerCard } from "@/lib/firestore/cards";
+import { listOwnerExchanges } from "@/lib/firestore/exchanges";
 
 function csvEscape(value: string): string {
   if (value.includes(",") || value.includes('"') || value.includes("\n")) {
@@ -15,14 +16,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const exchanges = await prisma.businessCardExchange.findMany({
-    where: { ownerId: user.id },
-    orderBy: { createdAt: "desc" },
-    include: {
-      card: { select: { business: true, name: true, slug: true } },
-    },
-  });
-
+  const exchanges = await listOwnerExchanges(user.uid);
   const header = [
     "Name",
     "Phone",
@@ -34,17 +28,21 @@ export async function GET(request: Request) {
     "Notes",
   ].join(",");
 
-  const rows = exchanges.map((e) =>
-    [
-      csvEscape(e.name),
-      csvEscape(e.phone ?? ""),
-      csvEscape(e.email ?? ""),
-      csvEscape(e.company ?? ""),
-      csvEscape(e.jobTitle ?? ""),
-      csvEscape(e.card.business || e.card.name || e.card.slug),
-      csvEscape(e.createdAt.toISOString()),
-      csvEscape(e.notes ?? ""),
-    ].join(",")
+  const rows = await Promise.all(
+    exchanges.map(async (e) => {
+      const card = await findOwnerCard(user.uid, e.cardId);
+      const cardLabel = card?.business || card?.name || e.cardSlug;
+      return [
+        csvEscape(e.name),
+        csvEscape(e.phone ?? ""),
+        csvEscape(e.email ?? ""),
+        csvEscape(e.company ?? ""),
+        csvEscape(e.jobTitle ?? ""),
+        csvEscape(cardLabel),
+        csvEscape(e.createdAt),
+        csvEscape(e.notes ?? ""),
+      ].join(",");
+    })
   );
 
   const csv = [header, ...rows].join("\n");

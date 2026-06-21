@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { isQrBarcodeCardTemplate } from "@/lib/cardTemplates";
+import { findPublicCardBySlug } from "@/lib/firestore/cards";
 import { deliverApplePass } from "@/lib/passkit/deliverApplePass";
 
 type Params = { params: Promise<{ slug: string }> };
@@ -28,9 +28,6 @@ function checkRateLimit(slug: string, ip: string): boolean {
   return true;
 }
 
-/**
- * Public Apple Wallet pass download for a PAID card (reciprocal exchange / landing).
- */
 export async function GET(request: Request, { params }: Params) {
   const { slug } = await params;
   const ip = getClientIp(request);
@@ -42,11 +39,7 @@ export async function GET(request: Request, { params }: Params) {
     );
   }
 
-  const card = await prisma.card.findFirst({
-    where: { slug, status: "PAID" },
-    include: { template: true },
-  });
-
+  const card = await findPublicCardBySlug(slug);
   if (!card) {
     return NextResponse.json({ error: "Card not found." }, { status: 404 });
   }

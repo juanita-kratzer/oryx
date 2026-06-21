@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { findPublicCardBySlug } from "@/lib/firestore/cards";
 import { logCardAnalyticsEvent } from "@/lib/analytics";
 import { parseVisitSource } from "@/lib/cardVisitSource";
 
@@ -26,11 +26,7 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Invalid event" }, { status: 400 });
   }
 
-  const card = await prisma.card.findFirst({
-    where: { slug, status: "PAID" },
-    select: { id: true },
-  });
-
+  const card = await findPublicCardBySlug(slug);
   if (!card) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

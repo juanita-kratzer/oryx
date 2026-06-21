@@ -2,6 +2,9 @@ require("dotenv").config();
 
 const appleTeamId = process.env.APPLE_TEAM_ID || "D4H4BX9XXY";
 
+const googleReversedClientId =
+  "com.googleusercontent.apps.761069329191-hulog7mb3kp2f45fvcr2kq718oi1ue0l";
+
 export default {
   expo: {
     name: "Oryx",
@@ -27,6 +30,17 @@ export default {
         ITSAppUsesNonExemptEncryption: false,
         NSContactsUsageDescription: "Oryx needs access to your contacts to save business card information.",
         NSCameraUsageDescription: "Oryx needs camera access to scan business cards and membership barcodes.",
+        NSAppTransportSecurity: {
+          NSAllowsLocalNetworking: true,
+        },
+        CFBundleURLTypes: [
+          {
+            CFBundleURLSchemes: [googleReversedClientId],
+          },
+          {
+            CFBundleURLSchemes: ["oryx"],
+          },
+        ],
       },
     },
     android: {
@@ -60,6 +74,7 @@ export default {
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
       "@react-native-firebase/crashlytics",
+      "@react-native-google-signin/google-signin",
       "./plugins/withXcodeSettings",
       "./plugins/withFmtFix",
       "./plugins/withFirebase",

@@ -19,6 +19,32 @@ function serverTimestamp() {
   return firestore.FieldValue.serverTimestamp();
 }
 
+async function syncPublicSlugIndex(
+  slug: string | undefined,
+  cardId: string,
+  templateId: string | undefined,
+  remove = false
+) {
+  if (!slug || isPrivateCardTemplate(templateId)) return;
+
+  const uid = getUid();
+  const indexRef = getFirestore().collection("cardsBySlug").doc(slug);
+
+  if (remove) {
+    const existing = await indexRef.get();
+    if (existing.exists && existing.data()?.cardId === cardId) {
+      await indexRef.delete();
+    }
+    return;
+  }
+
+  await indexRef.set({
+    ownerId: uid,
+    cardId,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 function docToCard(doc: FirebaseFirestoreTypes.DocumentSnapshot): Card {
   const data = doc.data()!;
   const slug = data.slug || doc.id;
@@ -108,7 +134,9 @@ export async function createCard(data: {
     });
   }
   const doc = await docRef.get();
-  return docToCard(doc);
+  const card = docToCard(doc);
+  await syncPublicSlugIndex(card.slug, card.id, card.templateId);
+  return card;
 }
 
 export async function updateCard(
@@ -138,7 +166,9 @@ export async function updateCard(
     updatedAt: serverTimestamp(),
   });
   const doc = await ref.get();
-  return docToCard(doc);
+  const card = docToCard(doc);
+  await syncPublicSlugIndex(card.slug, card.id, card.templateId);
+  return card;
 }
 
 export async function markCardPaid(
@@ -156,7 +186,9 @@ export async function markCardPaid(
     updatedAt: serverTimestamp(),
   });
   const doc = await ref.get();
-  return docToCard(doc);
+  const card = docToCard(doc);
+  await syncPublicSlugIndex(card.slug, card.id, card.templateId);
+  return card;
 }
 
 export function getPassDownloadUrl(cardId: string): string {
@@ -168,6 +200,9 @@ export async function deleteCard(id: string): Promise<void> {
   const doc = await ref.get();
   if (!doc.exists) throw new Error("Card not found");
 
+  const data = doc.data()!;
+  const slug = data.slug || id;
+  await syncPublicSlugIndex(slug, id, data.templateId, true);
   await ref.delete();
 
   try {

@@ -12,7 +12,11 @@ export type VerificationRecord = {
   createdAt: string;
 };
 
-const DATA_DIR = path.join(process.cwd(), ".data");
+// Vercel serverless has a read-only project dir; use /tmp for OTP storage.
+const DATA_DIR =
+  process.env.VERCEL === "1"
+    ? path.join("/tmp", "oryx-auth")
+    : path.join(process.cwd(), ".data");
 const DATA_FILE = path.join(DATA_DIR, "email-verification-codes.json");
 
 async function readAll(): Promise<VerificationRecord[]> {
