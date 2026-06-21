@@ -10,7 +10,7 @@ export default {
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
-    newArchEnabled: true,
+    newArchEnabled: false,
     scheme: "oryx",
     splash: {
       image: "./assets/splash-icon.png",
@@ -21,12 +21,14 @@ export default {
       supportsTablet: true,
       bundleIdentifier: "com.oryxjuanita.app",
       appleTeamId,
-      googleServicesFile: "../GoogleService-Info.plist",
+      googleServicesFile: "./GoogleService-Info.plist",
       infoPlist: {
         LSApplicationCategoryType: "public.app-category.business",
         ITSAppUsesNonExemptEncryption: false,
         NSContactsUsageDescription: "Oryx needs access to your contacts to save business card information.",
         NSCameraUsageDescription: "Oryx needs camera access to scan business cards.",
+        NFCReaderUsageDescription:
+          "Oryx writes your card link to NFC tags so people can tap your tag to open your card.",
       },
     },
     android: {
@@ -35,6 +37,10 @@ export default {
         backgroundColor: "#ffffff",
       },
       package: "com.oryxjuanita.app",
+    },
+    web: {
+      bundler: "metro",
+      output: "single",
     },
     plugins: [
       "expo-secure-store",
@@ -52,6 +58,7 @@ export default {
       "./plugins/withXcodeSettings",
       "./plugins/withFmtFix",
       "./plugins/withFirebase",
+      "react-native-nfc-manager",
     ],
     extra: {
       revenuecatApiKey: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY,

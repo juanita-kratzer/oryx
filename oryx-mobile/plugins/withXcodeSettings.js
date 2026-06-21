@@ -9,7 +9,7 @@ const { withXcodeProject, withInfoPlist, withEntitlementsPlist } = require("expo
  *   - Development Team:  D4H4BX9XXY
  *   - Display Name:      Oryx Wallet Cards
  *   - App Category:      public.app-category.business
- *   - Deployment Target: 15.1
+ *   - Deployment Target: 16.0
  *   - Device Families:   iPhone + iPad (1,2)
  *   - Bitcode:           disabled
  */
@@ -42,7 +42,7 @@ function withXcodeBuildSettings(config) {
       bs.INFOPLIST_KEY_CFBundleDisplayName = '"Oryx Wallet Cards"';
       bs.INFOPLIST_KEY_LSApplicationCategoryType =
         '"public.app-category.business"';
-      bs.IPHONEOS_DEPLOYMENT_TARGET = "15.1";
+      bs.IPHONEOS_DEPLOYMENT_TARGET = "16.0";
       bs.TARGETED_DEVICE_FAMILY = '"1,2"';
       bs.MARKETING_VERSION = config.version || "1.0.0";
       bs.CURRENT_PROJECT_VERSION = "8";

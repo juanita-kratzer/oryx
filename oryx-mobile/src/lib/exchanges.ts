@@ -20,6 +20,10 @@ export type PublicCardData = {
   jobTitle: string;
   company: string;
   website: string;
+  slug: string;
+  publicUrl: string;
+  nfcUrl: string;
+  qrUrl: string;
   dob?: string;
   cardDesign: {
     backgroundColor: string;
@@ -38,6 +42,10 @@ export async function publishBusinessCard(
     ownerUserId: uid,
     createdAt: serverTimestamp(),
   });
+}
+
+export async function unpublishBusinessCard(cardId: string): Promise<void> {
+  await getFirestore().collection("publicCards").doc(cardId).delete();
 }
 
 export async function getPublicCard(

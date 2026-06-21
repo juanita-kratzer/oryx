@@ -5,6 +5,8 @@ import { createCoupon } from "./coupon";
 import { createGiftCard } from "./giftCard";
 import { createLoyaltyCard } from "./loyaltyCard";
 import { createGenericCard } from "./genericCard";
+import { createGymMembershipCard } from "./gymMembership";
+import { createGymClassPassCard } from "./gymClassPass";
 
 export type TemplateInfo = {
   id: string;
@@ -43,6 +45,18 @@ export const TEMPLATE_REGISTRY: TemplateInfo[] = [
     name: "Loyalty Card",
     description: "Stamp-based loyalty card with progress tracking and rewards",
     factory: createLoyaltyCard,
+  },
+  {
+    id: "gymMembership",
+    name: "Gym Membership",
+    description: "Dark athletic membership pass with tier, member ID, and check-in QR",
+    factory: createGymMembershipCard,
+  },
+  {
+    id: "gymClassPass",
+    name: "Gym Class Pass",
+    description: "Group fitness class pack with session tracker and expiry",
+    factory: createGymClassPassCard,
   },
   {
     id: "generic",

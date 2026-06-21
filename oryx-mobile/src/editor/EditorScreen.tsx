@@ -1,4 +1,4 @@
-import React, { useMemo, useReducer, useState, useCallback } from "react";
+import React, { useMemo, useReducer, useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -23,6 +23,11 @@ import { FontPairingSheet } from "./FontPairingSheet";
 import { editorReducer, createInitialEditorState } from "./editorReducer";
 import { createCard } from "../lib/firestore";
 import { publishBusinessCard } from "../lib/exchanges";
+import {
+  getCardPublicUrl,
+  getCardNfcUrl,
+  getCardQrPayload,
+} from "../lib/cardLinks";
 import { BRAND } from "../constants/colors";
 import type { RootStackParamList } from "../types";
 
@@ -52,6 +57,7 @@ export function EditorScreen({ route, navigation }: Props) {
 
   const [bottomPanel, setBottomPanel] = useState<BottomPanel>("none");
   const [saving, setSaving] = useState(false);
+  const saveStartedRef = useRef(false);
 
   const canvasWidth = Math.min(screenWidth - 32, 380);
 
@@ -78,7 +84,8 @@ export function EditorScreen({ route, navigation }: Props) {
   );
 
   const handleSave = async () => {
-    if (!state.document) return;
+    if (!state.document || saveStartedRef.current || saving) return;
+    saveStartedRef.current = true;
     setSaving(true);
 
     try {
@@ -115,8 +122,6 @@ export function EditorScreen({ route, navigation }: Props) {
       });
 
       if (doc.templateId === "business") {
-        const exchangeUrl = `https://oryx-wallet-cards.web.app/x/${card.id}`;
-
         await publishBusinessCard(card.id, {
           fullName: name || "",
           phone: phone || "",
@@ -124,17 +129,20 @@ export function EditorScreen({ route, navigation }: Props) {
           jobTitle: fieldValues["jobTitle"] || "",
           company: business || "",
           website: website || "",
+          slug: card.slug,
+          publicUrl: card.publicUrl ?? getCardPublicUrl(card.slug),
+          nfcUrl: card.nfcUrl ?? getCardNfcUrl(card.slug),
+          qrUrl: card.qrUrl ?? getCardQrPayload(card.slug),
           cardDesign: {
             backgroundColor: doc.background.color,
             logoUrl: null,
           },
         });
-
-        // QR and NFC values are set in publicCards — the card itself stores the exchange URL in Firestore
       }
 
       navigation.replace("CardDelivery", { cardId: card.id });
     } catch (e) {
+      saveStartedRef.current = false;
       Alert.alert(
         "Error",
         e instanceof Error ? e.message : "Failed to create card"

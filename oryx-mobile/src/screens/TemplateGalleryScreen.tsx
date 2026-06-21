@@ -1,67 +1,25 @@
-import React, { useMemo } from "react";
+import React from "react";
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   Pressable,
-  useWindowDimensions,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { TEMPLATE_REGISTRY, TemplateInfo } from "../templates";
-import { CardRenderer } from "../engine/CardRenderer";
+import { TEMPLATE_REGISTRY } from "../templates";
 import { BRAND } from "../constants/colors";
 import type { RootStackParamList } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "TemplateGallery">;
 
-function TemplateCard({
-  info,
-  cardWidth,
-  onPress,
-}: {
-  info: TemplateInfo;
-  cardWidth: number;
-  onPress: () => void;
-}) {
-  const doc = useMemo(() => info.factory(), [info]);
-
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        { width: cardWidth },
-        pressed && styles.cardPressed,
-      ]}
-      onPress={onPress}
-    >
-      <View style={styles.cardPreview}>
-        <CardRenderer document={doc} width={cardWidth - 2} />
-      </View>
-      <View style={styles.cardMeta}>
-        <Text style={styles.cardName}>{info.name}</Text>
-        <Text style={styles.cardDescription} numberOfLines={2}>
-          {info.description}
-        </Text>
-      </View>
-    </Pressable>
-  );
-}
-
 export function TemplateGalleryScreen({ navigation }: Props) {
-  const { width: screenWidth } = useWindowDimensions();
-  const gap = 12;
-  const padding = 16;
-  const cardWidth = (screenWidth - padding * 2 - gap) / 2;
-
   return (
     <View style={styles.container}>
       <FlatList
         data={TEMPLATE_REGISTRY}
         keyExtractor={(item) => item.id}
-        numColumns={2}
         contentContainerStyle={styles.list}
-        columnWrapperStyle={styles.row}
         ListHeaderComponent={
           <View style={styles.header}>
             <Text style={styles.title}>Choose a Template</Text>
@@ -70,14 +28,24 @@ export function TemplateGalleryScreen({ navigation }: Props) {
             </Text>
           </View>
         }
-        renderItem={({ item }) => (
-          <TemplateCard
-            info={item}
-            cardWidth={cardWidth}
+        renderItem={({ item, index }) => (
+          <Pressable
+            style={({ pressed }) => [
+              styles.row,
+              index === 0 && styles.rowFirst,
+              index === TEMPLATE_REGISTRY.length - 1 && styles.rowLast,
+              pressed && styles.rowPressed,
+            ]}
             onPress={() =>
               navigation.navigate("CardEditor", { templateId: item.id })
             }
-          />
+          >
+            <View style={styles.rowContent}>
+              <Text style={styles.rowTitle}>{item.name}</Text>
+              <Text style={styles.rowDescription}>{item.description}</Text>
+            </View>
+            <Text style={styles.rowChevron}>›</Text>
+          </Pressable>
         )}
       />
     </View>
@@ -93,35 +61,39 @@ const styles = StyleSheet.create({
     color: BRAND.textSecondary,
     marginTop: 4,
   },
-  list: { padding: 16 },
-  row: { gap: 12 },
-  card: {
+  list: { padding: 16, paddingBottom: 32 },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: BRAND.card,
-    borderRadius: 14,
-    overflow: "hidden",
     borderWidth: 1,
     borderColor: BRAND.border,
-    marginBottom: 12,
+    borderBottomWidth: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 12,
   },
-  cardPressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
-  cardPreview: {
-    overflow: "hidden",
-    borderTopLeftRadius: 13,
-    borderTopRightRadius: 13,
+  rowFirst: {
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
   },
-  cardMeta: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  rowLast: {
+    borderBottomWidth: 1,
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
   },
-  cardName: {
-    fontSize: 15,
-    fontWeight: "600",
+  rowPressed: { opacity: 0.9 },
+  rowContent: { flex: 1 },
+  rowTitle: {
+    fontSize: 17,
+    fontWeight: "700",
     color: BRAND.text,
   },
-  cardDescription: {
-    fontSize: 11,
+  rowDescription: {
+    fontSize: 14,
     color: BRAND.textSecondary,
-    marginTop: 3,
-    lineHeight: 15,
+    marginTop: 4,
+    lineHeight: 20,
   },
+  rowChevron: { fontSize: 22, color: BRAND.textSecondary },
 });

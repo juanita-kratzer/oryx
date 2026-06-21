@@ -1,32 +1,57 @@
 import React from "react";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
+import {
+  NavigationContainer,
+  DarkTheme,
+  DefaultTheme,
+  type Theme as NavTheme,
+} from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { StatusBar } from "expo-status-bar";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
+import { WebDevBanner } from "./src/components/WebDevBanner";
 import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
+import { ThemeProvider, useTheme } from "./src/contexts/ThemeContext";
 import { SignInScreen } from "./src/screens/SignInScreen";
 import { SignUpScreen } from "./src/screens/SignUpScreen";
-import { MyCardsScreen } from "./src/screens/MyCardsScreen";
+import { MainTabNavigator } from "./src/navigation/MainTabNavigator";
 import { TemplateGalleryScreen } from "./src/screens/TemplateGalleryScreen";
-import { EditorScreen } from "./src/editor/EditorScreen";
+import { CardEditorRouter } from "./src/navigation/CardEditorRouter";
 import { CardDeliveryScreen } from "./src/screens/CardDeliveryScreen";
 import { ExchangeListScreen } from "./src/screens/ExchangeListScreen";
 import { ExchangeDetailScreen } from "./src/screens/ExchangeDetailScreen";
 import { ScanCardScreen } from "./src/screens/ScanCardScreen";
 import { ReviewScannedContactScreen } from "./src/screens/ReviewScannedContactScreen";
-import { ScannedContactsScreen } from "./src/screens/ScannedContactsScreen";
-import { BRAND } from "./src/constants/colors";
+import { EditEmailScreen } from "./src/screens/EditEmailScreen";
+import { EditPasswordScreen } from "./src/screens/EditPasswordScreen";
 import type { RootStackParamList } from "./src/types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+function buildNavTheme(isDark: boolean, colors: ReturnType<typeof useTheme>["colors"]): NavTheme {
+  const base = isDark ? DarkTheme : DefaultTheme;
+  return {
+    ...base,
+    colors: {
+      ...base.colors,
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.card,
+      text: colors.text,
+      border: colors.border,
+      notification: colors.error,
+    },
+  };
+}
+
 function AppNavigator() {
   const { user, loading } = useAuth();
+  const { colors } = useTheme();
 
   if (loading) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={BRAND.primary} />
+      <View style={[styles.loading, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -35,7 +60,7 @@ function AppNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {user ? (
         <>
-          <Stack.Screen name="Main" component={MyCardsScreen} />
+          <Stack.Screen name="MainTabs" component={MainTabNavigator} />
           <Stack.Screen
             name="TemplateGallery"
             component={TemplateGalleryScreen}
@@ -47,7 +72,7 @@ function AppNavigator() {
           />
           <Stack.Screen
             name="CardEditor"
-            component={EditorScreen}
+            component={CardEditorRouter}
             options={{
               headerShown: true,
               title: "Create Card",
@@ -59,8 +84,8 @@ function AppNavigator() {
             component={CardDeliveryScreen}
             options={{
               headerShown: true,
-              title: "Your Card",
-              headerBackTitle: "Back",
+              title: "Card",
+              headerBackTitle: "Cards",
             }}
           />
           <Stack.Screen
@@ -86,7 +111,7 @@ function AppNavigator() {
             component={ScanCardScreen}
             options={{
               headerShown: true,
-              title: "Scan Card",
+              title: "Scan business card",
               headerBackTitle: "Back",
             }}
           />
@@ -100,18 +125,31 @@ function AppNavigator() {
             }}
           />
           <Stack.Screen
-            name="ScannedContacts"
-            component={ScannedContactsScreen}
+            name="EditEmail"
+            component={EditEmailScreen}
             options={{
               headerShown: true,
-              title: "My Contacts",
+              title: "Change Email",
+              headerBackTitle: "Back",
+            }}
+          />
+          <Stack.Screen
+            name="EditPassword"
+            component={EditPasswordScreen}
+            options={{
+              headerShown: true,
+              title: "Change Password",
               headerBackTitle: "Back",
             }}
           />
         </>
       ) : (
         <>
-          <Stack.Screen name="SignIn" component={SignInScreen} />
+          <Stack.Screen
+            name="SignIn"
+            component={SignInScreen}
+            options={{ animationTypeForReplace: "pop" }}
+          />
           <Stack.Screen name="SignUp" component={SignUpScreen} />
         </>
       )}
@@ -119,23 +157,47 @@ function AppNavigator() {
   );
 }
 
+function ThemedApp() {
+  const { isDark, colors } = useTheme();
+  const navTheme = buildNavTheme(isDark, colors);
+
+  return (
+    <>
+      <StatusBar style={isDark ? "light" : "dark"} />
+      <NavigationContainer theme={navTheme}>
+        <AppNavigator />
+      </NavigationContainer>
+    </>
+  );
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <NavigationContainer>
-          <AppNavigator />
-        </NavigationContainer>
-      </AuthProvider>
+      <ThemeProvider>
+        <View style={styles.root}>
+          <WebDevBanner />
+          <View style={styles.app}>
+            <AuthProvider>
+              <ThemedApp />
+            </AuthProvider>
+          </View>
+        </View>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  app: {
+    flex: 1,
+  },
   loading: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: BRAND.background,
   },
 });

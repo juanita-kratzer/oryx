@@ -11,21 +11,39 @@ import {
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { fetchExchangeRequests, ExchangeRequest } from "../lib/exchanges";
+import {
+  fetchBusinessCardExchanges,
+  type BusinessCardExchangeLead,
+} from "../lib/exchangesApi";
 import { BRAND } from "../constants/colors";
 import type { RootStackParamList } from "../types";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
+type ListItem =
+  | { kind: "lead"; data: BusinessCardExchangeLead }
+  | { kind: "request"; data: ExchangeRequest };
+
 export function ExchangeListScreen() {
   const navigation = useNavigation<Nav>();
-  const [requests, setRequests] = useState<ExchangeRequest[]>([]);
+  const [items, setItems] = useState<ListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const data = await fetchExchangeRequests();
-      setRequests(data);
+      const [leads, requests] = await Promise.all([
+        fetchBusinessCardExchanges(),
+        fetchExchangeRequests(),
+      ]);
+
+      const leadItems: ListItem[] = leads.map((data) => ({ kind: "lead", data }));
+      const requestItems: ListItem[] = requests.map((data) => ({
+        kind: "request",
+        data,
+      }));
+
+      setItems([...leadItems, ...requestItems]);
     } catch {
       // empty state is fine
     } finally {
@@ -58,8 +76,10 @@ export function ExchangeListScreen() {
   return (
     <View style={styles.container}>
       <FlatList
-        data={requests}
-        keyExtractor={(item) => item.id}
+        data={items}
+        keyExtractor={(item) =>
+          item.kind === "lead" ? `lead-${item.data.id}` : `req-${item.data.id}`
+        }
         contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -73,49 +93,95 @@ export function ExchangeListScreen() {
             />
           ) : (
             <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>No exchange requests</Text>
+              <Text style={styles.emptyTitle}>No exchanges yet</Text>
               <Text style={styles.emptyText}>
                 When someone scans your Business Card QR code and shares their
-                details, they'll appear here.
+                details, they&apos;ll appear here.
               </Text>
             </View>
           )
         }
-        renderItem={({ item }) => (
-          <Pressable
-            style={({ pressed }) => [
-              styles.card,
-              pressed && styles.cardPressed,
-            ]}
-            onPress={() =>
-              navigation.navigate("ExchangeDetail", { requestId: item.id })
-            }
-          >
-            <View style={styles.cardRow}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {(item.recipientName || "?")[0].toUpperCase()}
-                </Text>
-              </View>
-              <View style={styles.cardInfo}>
-                <Text style={styles.cardName}>
-                  {item.recipientName || "Unknown"}
-                </Text>
-                <Text style={styles.cardCompany}>
-                  {item.recipientCompany || item.recipientJobTitle || ""}
-                </Text>
-              </View>
-              <View style={styles.cardMeta}>
-                <Text style={styles.cardDate}>
-                  {formatDate(item.createdAt)}
-                </Text>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>Pending</Text>
+        renderItem={({ item }) => {
+          if (item.kind === "lead") {
+            const lead = item.data;
+            const cardName =
+              lead.card.business || lead.card.name || lead.card.slug;
+            return (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.card,
+                  pressed && styles.cardPressed,
+                ]}
+                onPress={() =>
+                  navigation.navigate("ExchangeDetail", { lead })
+                }
+              >
+                <View style={styles.cardRow}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>
+                      {(lead.name || "?")[0].toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.cardName}>{lead.name}</Text>
+                    <Text style={styles.cardCompany}>
+                      {lead.company || lead.jobTitle || cardName}
+                    </Text>
+                  </View>
+                  <View style={styles.cardMeta}>
+                    <Text style={styles.cardDate}>
+                      {formatDate(lead.createdAt)}
+                    </Text>
+                    <View style={[styles.badge, styles.badgeLead]}>
+                      <Text style={[styles.badgeText, styles.badgeLeadText]}>
+                        Lead
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </Pressable>
+            );
+          }
+
+          const request = item.data;
+          return (
+            <Pressable
+              style={({ pressed }) => [
+                styles.card,
+                pressed && styles.cardPressed,
+              ]}
+              onPress={() =>
+                navigation.navigate("ExchangeDetail", {
+                  requestId: request.id,
+                })
+              }
+            >
+              <View style={styles.cardRow}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>
+                    {(request.recipientName || "?")[0].toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardName}>
+                    {request.recipientName || "Unknown"}
+                  </Text>
+                  <Text style={styles.cardCompany}>
+                    {request.recipientCompany || request.recipientJobTitle || ""}
+                  </Text>
+                </View>
+                <View style={styles.cardMeta}>
+                  <Text style={styles.cardDate}>
+                    {formatDate(request.createdAt)}
+                  </Text>
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>Pending</Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          </Pressable>
-        )}
+            </Pressable>
+          );
+        }}
       />
     </View>
   );
@@ -165,4 +231,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   badgeText: { fontSize: 11, fontWeight: "600", color: "#92400e" },
+  badgeLead: { backgroundColor: "#d1fae5" },
+  badgeLeadText: { color: "#065f46" },
 });

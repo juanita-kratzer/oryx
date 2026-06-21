@@ -1,11 +1,15 @@
 import React from "react";
 import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import type { ComponentProps } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as ImagePicker from "expo-image-picker";
+import * as ImagePicker from "../lib/imagePicker";
 import type { CardElement } from "../types/card";
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from "../types/card";
 import type { EditorAction } from "../types/editor";
 import { BRAND } from "../constants/colors";
+
+type IoniconName = ComponentProps<typeof Ionicons>["name"];
 
 type Props = {
   dispatch: React.Dispatch<EditorAction>;
@@ -14,7 +18,7 @@ type Props = {
 
 type ElementPreset = {
   label: string;
-  icon: string;
+  icon: IoniconName;
   create: (imageUri?: string) => CardElement;
   requiresImagePicker?: boolean;
 };
@@ -24,7 +28,7 @@ const cx = CANVAS_WIDTH / 2;
 const PRESETS: ElementPreset[] = [
   {
     label: "Text",
-    icon: "T",
+    icon: "text-outline",
     create: () => ({
       id: "",
       type: "text",
@@ -53,7 +57,7 @@ const PRESETS: ElementPreset[] = [
   },
   {
     label: "Image",
-    icon: "🖼",
+    icon: "image-outline",
     requiresImagePicker: true,
     create: (imageUri?: string) => ({
       id: "",
@@ -79,7 +83,7 @@ const PRESETS: ElementPreset[] = [
   },
   {
     label: "QR Code",
-    icon: "⊞",
+    icon: "qr-code-outline",
     create: () => ({
       id: "",
       type: "qr",
@@ -104,7 +108,7 @@ const PRESETS: ElementPreset[] = [
   },
   {
     label: "NFC",
-    icon: "◎",
+    icon: "hardware-chip-outline",
     create: () => ({
       id: "",
       type: "nfc",
@@ -128,7 +132,7 @@ const PRESETS: ElementPreset[] = [
   },
   {
     label: "Divider",
-    icon: "—",
+    icon: "remove-outline",
     create: () => ({
       id: "",
       type: "divider",
@@ -152,7 +156,7 @@ const PRESETS: ElementPreset[] = [
   },
   {
     label: "Shape",
-    icon: "□",
+    icon: "square-outline",
     create: () => ({
       id: "",
       type: "shape",
@@ -228,7 +232,7 @@ export function AddElementPanel({ dispatch, onDismiss }: Props) {
             ]}
             onPress={() => handlePresetPress(p)}
           >
-            <Text style={styles.presetIcon}>{p.icon}</Text>
+            <Ionicons name={p.icon} size={24} color={BRAND.text} style={styles.presetIcon} />
             <Text style={styles.presetLabel}>{p.label}</Text>
           </Pressable>
         ))}
@@ -285,7 +289,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#E5E7EB",
   },
   presetIcon: {
-    fontSize: 24,
     marginBottom: 4,
   },
   presetLabel: {

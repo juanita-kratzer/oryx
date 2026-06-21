@@ -82,6 +82,13 @@ const ICONS: Record<string, (size: number, color: string, sw: number) => React.R
       <Path d="M28 36l-6-6-16 8" stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   ),
+  dumbbell: (s, c, sw) => (
+    <Svg width={s} height={s} viewBox="0 0 48 48" fill="none">
+      <Rect x="4" y="16" width="10" height="16" rx="2" stroke={c} strokeWidth={sw} />
+      <Rect x="34" y="16" width="10" height="16" rx="2" stroke={c} strokeWidth={sw} />
+      <Line x1="14" y1="24" x2="34" y2="24" stroke={c} strokeWidth={sw + 1} strokeLinecap="round" />
+    </Svg>
+  ),
 };
 
 export function IconElement({ config, scale }: Props) {

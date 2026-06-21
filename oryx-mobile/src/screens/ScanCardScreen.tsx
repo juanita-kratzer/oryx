@@ -8,8 +8,9 @@ import {
   Alert,
   Image,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import MlkitOcr from "react-native-mlkit-ocr";
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "../lib/imagePicker";
+import TextRecognition from "../lib/textRecognition";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { parseBusinessCardText } from "../lib/cardParser";
@@ -72,8 +73,13 @@ export function ScanCardScreen() {
   const processImage = async (uri: string) => {
     setProcessing(true);
     try {
-      const ocrResult = await MlkitOcr.detectFromUri(uri);
-      const lines = ocrResult.map((block: any) => block.text);
+      const result = await TextRecognition.recognize(uri);
+      const lines: string[] = [];
+      for (const block of result.blocks) {
+        for (const line of block.lines) {
+          if (line.text.trim()) lines.push(line.text.trim());
+        }
+      }
 
       if (lines.length === 0) {
         Alert.alert(
@@ -110,7 +116,7 @@ export function ScanCardScreen() {
         ) : (
           <View style={styles.promptContainer}>
             <View style={styles.iconCircle}>
-              <Text style={styles.iconText}>📇</Text>
+              <Ionicons name="scan-outline" size={40} color={BRAND.primary} />
             </View>
             <Text style={styles.title}>Scan a Business Card</Text>
             <Text style={styles.subtitle}>
@@ -163,7 +169,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 20,
   },
-  iconText: { fontSize: 40 },
   title: {
     fontSize: 24,
     fontWeight: "700",

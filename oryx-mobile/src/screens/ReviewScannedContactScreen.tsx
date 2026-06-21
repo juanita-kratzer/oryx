@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { Contact, requestPermissionsAsync } from "expo-contacts";
+import { Contact, requestPermissionsAsync } from "../lib/contacts";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { saveScannedContact } from "../lib/exchanges";
 import { BRAND } from "../constants/colors";

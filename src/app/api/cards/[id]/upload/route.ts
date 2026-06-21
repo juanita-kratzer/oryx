@@ -23,8 +23,7 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Card not found" }, { status: 404 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const formData = await request.formData() as any;
+  const formData = await request.formData();
   const file = formData.get("file");
   if (!file || typeof file === "string") {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });

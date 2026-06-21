@@ -6,19 +6,10 @@
 import { PKPass } from "passkit-generator";
 import { getPassKitCertificates, getPassKitIds } from "./signer";
 import { normalizePassBackgroundColor } from "./backgroundColor";
+import { getCardWalletUrl } from "@/lib/cardLinks";
 import type { Card, Template } from "@prisma/client";
 
 type CardWithTemplate = Card & { template: Template };
-
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ||
-  process.env.VERCEL_URL ||
-  "http://localhost:3000";
-
-function getOrigin(): string {
-  if (/^https?:\/\//i.test(APP_URL)) return APP_URL;
-  return `https://${APP_URL}`;
-}
 
 async function fetchImageBuffer(url: string): Promise<Buffer> {
   const res = await fetch(url, {
@@ -69,8 +60,7 @@ export async function buildPass(card: CardWithTemplate): Promise<Buffer> {
   const { template } = card;
   const certs = getPassKitCertificates();
   const ids = getPassKitIds();
-  const origin = getOrigin();
-  const landingUrl = `${origin}/c/${card.slug}`;
+  const landingUrl = getCardWalletUrl(card);
   const layout = template.passLayout as PassLayout;
 
   const buffers: Record<string, Buffer> = {};

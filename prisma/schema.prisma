@@ -16,14 +16,16 @@ datasource db {
 // ---------------------------------------------------------------------------
 
 model User {
-  id         String   @id @default(cuid())
-  supabaseId String   @unique
-  email      String?
-  name       String?
-  imageUrl   String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  cards      Card[]
+  id          String   @id @default(cuid())
+  supabaseId  String   @unique
+  firebaseUid String?  @unique
+  email       String?
+  name        String?
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  cards       Card[]
+  exchanges   BusinessCardExchange[]
 }
 
 // ---------------------------------------------------------------------------
@@ -104,10 +106,17 @@ model Card {
   // Purchase tracking (RevenueCat transaction ID)
   purchaseId String?
 
+  /// Firestore document id when synced from mobile app
+  externalId String? @unique
+
+  /// When false, public landing hides the share-back exchange form
+  allowSmartExchange Boolean @default(true)
+
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
   passes     Pass[]
   dailyStats CardDailyStats[]
+  exchanges  BusinessCardExchange[]
 
   @@index([userId, status])
 }
@@ -115,6 +124,30 @@ model Card {
 enum CardStatus {
   DRAFT
   PAID
+}
+
+// ---------------------------------------------------------------------------
+// Smart Business Card Exchange (public landing share-back)
+// ---------------------------------------------------------------------------
+
+model BusinessCardExchange {
+  id           String   @id @default(cuid())
+  cardId       String
+  card         Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  ownerId      String
+  owner        User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name         String
+  phone        String?
+  email        String?
+  company      String?
+  jobTitle     String?
+  notes        String?
+  consentGiven Boolean  @default(true)
+  source       String   @default("direct")
+  createdAt    DateTime @default(now())
+
+  @@index([ownerId, createdAt(sort: Desc)])
+  @@index([cardId, createdAt(sort: Desc)])
 }
 
 // ---------------------------------------------------------------------------
@@ -151,6 +184,10 @@ model CardDailyStats {
   taps           Int      @default(0)
   vcardDownloads Int      @default(0)
   passDownloads  Int      @default(0)
+  nfcVisits      Int      @default(0)
+  qrVisits       Int      @default(0)
+  walletVisits   Int      @default(0)
+  directVisits   Int      @default(0)
 
   @@unique([cardId, date])
 }
@@ -167,4 +204,20 @@ model SystemEvent {
   createdAt DateTime @default(now())
 
   @@index([type, createdAt(sort: Desc)])
+}
+
+// ---------------------------------------------------------------------------
+// Mobile sign-up email verification
+// ---------------------------------------------------------------------------
+
+model EmailVerificationCode {
+  id        String   @id @default(cuid())
+  email     String
+  codeHash  String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt(sort: Desc)])
 }

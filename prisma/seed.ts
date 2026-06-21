@@ -85,6 +85,84 @@ const templates = [
     sortOrder: 2,
   },
   {
+    slug: "gym-membership",
+    name: "Gym Membership",
+    description: "Athletic membership pass with tier, member ID, and check-in",
+    category: "MEMBERSHIP" as const,
+    passType: "generic",
+    defaultBgColor: "#0f172a",
+    editableFields: [
+      { key: "business", label: "Gym Name", placeholder: "IronFit Gym", required: true, maxLength: 50 },
+      { key: "name", label: "Member Name", placeholder: "Alex Rivera", required: true, maxLength: 40 },
+      { key: "membershipTier", label: "Membership Tier", placeholder: "Unlimited", maxLength: 30 },
+      { key: "memberId", label: "Member ID", placeholder: "GYM-001234", maxLength: 20 },
+      { key: "expiryDate", label: "Valid Until", placeholder: "31 Dec 2026", maxLength: 20 },
+    ],
+    passLayout: {
+      headerFields: [
+        { key: "tier", fieldPath: "fieldValues.membershipTier", label: "" },
+      ],
+      primaryFields: [
+        { key: "name", fieldPath: "name", label: "" },
+      ],
+      secondaryFields: [
+        { key: "memberId", fieldPath: "fieldValues.memberId", label: "Member ID" },
+        { key: "expires", fieldPath: "fieldValues.expiryDate", label: "Valid Until" },
+      ],
+      auxiliaryFields: [],
+      backFields: [
+        { key: "gym", fieldPath: "business", label: "Gym" },
+      ],
+    },
+    colorOptions: [
+      { label: "Midnight", value: "#0f172a" },
+      { label: "Charcoal", value: "#111827" },
+      { label: "Steel", value: "#1e293b" },
+      { label: "Crimson", value: "#7f1d1d" },
+      { label: "Forest", value: "#14532d" },
+    ],
+    sortOrder: 3,
+  },
+  {
+    slug: "gym-class-pass",
+    name: "Gym Class Pass",
+    description: "Group fitness class pack with sessions and expiry",
+    category: "MEMBERSHIP" as const,
+    passType: "generic",
+    defaultBgColor: "#ffffff",
+    editableFields: [
+      { key: "business", label: "Studio / Gym", placeholder: "Pulse Fitness Studio", required: true, maxLength: 50 },
+      { key: "name", label: "Member Name", placeholder: "Sam Taylor", required: true, maxLength: 40 },
+      { key: "classType", label: "Class Type", placeholder: "HIIT · Yoga · Spin", maxLength: 40 },
+      { key: "sessionsRemaining", label: "Sessions Remaining", placeholder: "7 of 10", maxLength: 20 },
+      { key: "expiryDate", label: "Expires", placeholder: "30 Jun 2026", maxLength: 20 },
+    ],
+    passLayout: {
+      headerFields: [],
+      primaryFields: [
+        { key: "name", fieldPath: "name", label: "" },
+      ],
+      secondaryFields: [
+        { key: "classType", fieldPath: "fieldValues.classType", label: "Class" },
+        { key: "sessions", fieldPath: "fieldValues.sessionsRemaining", label: "Sessions" },
+      ],
+      auxiliaryFields: [
+        { key: "expires", fieldPath: "fieldValues.expiryDate", label: "Expires" },
+      ],
+      backFields: [
+        { key: "studio", fieldPath: "business", label: "Studio" },
+      ],
+    },
+    colorOptions: [
+      { label: "White", value: "#ffffff" },
+      { label: "Ice", value: "#f8fafc" },
+      { label: "Lime", value: "#ecfccb" },
+      { label: "Sky", value: "#e0f2fe" },
+      { label: "Graphite", value: "#f3f4f6" },
+    ],
+    sortOrder: 4,
+  },
+  {
     slug: "gift-card",
     name: "Gift Card",
     description: "Vibrant gift card with balance display and barcode",
@@ -119,7 +197,7 @@ const templates = [
       { label: "Emerald", value: "#047857" },
       { label: "Red", value: "#b91c1c" },
     ],
-    sortOrder: 3,
+    sortOrder: 5,
   },
   {
     slug: "digital-contact",
@@ -158,7 +236,7 @@ const templates = [
       { label: "Sky", value: "#dbeafe" },
       { label: "Black", value: "#111827" },
     ],
-    sortOrder: 4,
+    sortOrder: 6,
   },
   {
     slug: "booking",
@@ -194,7 +272,7 @@ const templates = [
       { label: "Midnight", value: "#1e1b4b" },
       { label: "Sand", value: "#d4a373" },
     ],
-    sortOrder: 5,
+    sortOrder: 7,
   },
 ];
 

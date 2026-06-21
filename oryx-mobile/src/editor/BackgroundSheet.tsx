@@ -9,7 +9,7 @@ import {
   Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as ImagePicker from "expo-image-picker";
+import * as ImagePicker from "../lib/imagePicker";
 import type { BackgroundConfig } from "../types/card";
 import type { EditorAction } from "../types/editor";
 import { BRAND } from "../constants/colors";

@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { Contact, requestPermissionsAsync } from "expo-contacts";
+import { Contact, requestPermissionsAsync } from "../lib/contacts";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
   fetchExchangeRequest,
@@ -16,18 +16,21 @@ import {
   rejectExchangeRequest,
   ExchangeRequest,
 } from "../lib/exchanges";
+import type { BusinessCardExchangeLead } from "../lib/exchangesApi";
 import { BRAND } from "../constants/colors";
 import type { RootStackParamList } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ExchangeDetail">;
 
 export function ExchangeDetailScreen({ route, navigation }: Props) {
-  const { requestId } = route.params;
+  const { requestId, lead: routeLead } = route.params;
   const [request, setRequest] = useState<ExchangeRequest | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!routeLead);
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
+    if (routeLead || !requestId) return;
+
     (async () => {
       try {
         const data = await fetchExchangeRequest(requestId);
@@ -39,7 +42,34 @@ export function ExchangeDetailScreen({ route, navigation }: Props) {
         setLoading(false);
       }
     })();
-  }, [requestId]);
+  }, [requestId, routeLead, navigation]);
+
+  const saveLeadToContacts = async (lead: BusinessCardExchangeLead) => {
+    const { status } = await requestPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission Required",
+        "Contacts permission is needed to save this contact."
+      );
+      return;
+    }
+
+    const nameParts = (lead.name || "").trim().split(/\s+/);
+    const givenName = nameParts.slice(0, -1).join(" ") || nameParts[0] || "";
+    const familyName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
+
+    await Contact.create({
+      givenName,
+      familyName,
+      ...(lead.phone ? { phones: [{ label: "mobile", number: lead.phone }] } : {}),
+      ...(lead.email ? { emails: [{ label: "work", address: lead.email }] } : {}),
+      ...(lead.jobTitle ? { jobTitle: lead.jobTitle } : {}),
+      ...(lead.company ? { company: lead.company } : {}),
+      ...(lead.notes ? { note: lead.notes } : {}),
+    });
+
+    Alert.alert("Contact Saved", `${lead.name} has been added to your contacts.`);
+  };
 
   const handleAccept = async () => {
     if (!request) return;
@@ -76,7 +106,7 @@ export function ExchangeDetailScreen({ route, navigation }: Props) {
           : {}),
       });
 
-      await acceptExchangeRequest(requestId);
+      await acceptExchangeRequest(request.id);
 
       Alert.alert(
         "Contact Saved",
@@ -103,7 +133,7 @@ export function ExchangeDetailScreen({ route, navigation }: Props) {
         onPress: async () => {
           setProcessing(true);
           try {
-            await rejectExchangeRequest(requestId);
+            await rejectExchangeRequest(request.id);
             navigation.goBack();
           } catch {
             Alert.alert("Error", "Failed to reject request.");
@@ -119,6 +149,74 @@ export function ExchangeDetailScreen({ route, navigation }: Props) {
     return (
       <View style={[styles.container, styles.center]}>
         <ActivityIndicator size="large" color={BRAND.primary} />
+      </View>
+    );
+  }
+
+  if (routeLead) {
+    const cardName =
+      routeLead.card.business || routeLead.card.name || routeLead.card.slug;
+    const fields = [
+      { label: "Name", value: routeLead.name },
+      { label: "Phone", value: routeLead.phone },
+      { label: "Email", value: routeLead.email },
+      { label: "Job Title", value: routeLead.jobTitle },
+      { label: "Company", value: routeLead.company },
+      { label: "Card", value: cardName },
+      { label: "Notes", value: routeLead.notes },
+    ];
+
+    return (
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.header}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {(routeLead.name || "?")[0].toUpperCase()}
+              </Text>
+            </View>
+            <Text style={styles.name}>{routeLead.name}</Text>
+            {routeLead.company ? (
+              <Text style={styles.company}>{routeLead.company}</Text>
+            ) : null}
+            <View style={styles.sourceBadge}>
+              <Text style={styles.sourceText}>PUBLIC LANDING</Text>
+            </View>
+          </View>
+
+          <View style={styles.fieldsCard}>
+            {fields.map(
+              (f) =>
+                f.value ? (
+                  <View key={f.label} style={styles.fieldRow}>
+                    <Text style={styles.fieldLabel}>{f.label}</Text>
+                    <Text style={styles.fieldValue}>{f.value}</Text>
+                  </View>
+                ) : null
+            )}
+          </View>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.acceptBtn,
+              pressed && styles.btnPressed,
+              processing && styles.btnDisabled,
+            ]}
+            onPress={async () => {
+              setProcessing(true);
+              try {
+                await saveLeadToContacts(routeLead);
+              } finally {
+                setProcessing(false);
+              }
+            }}
+            disabled={processing}
+          >
+            <Text style={styles.acceptText}>
+              {processing ? "Saving..." : "Save to Contacts"}
+            </Text>
+          </Pressable>
+        </ScrollView>
       </View>
     );
   }

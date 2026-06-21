@@ -1,0 +1,80 @@
+import { StyleSheet } from "react-native";
+import { BRAND } from "../constants/colors";
+
+export const accountFormStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: BRAND.background },
+  content: { padding: 24, paddingTop: 24, paddingBottom: 48 },
+  subtitle: {
+    fontSize: 16,
+    color: BRAND.textSecondary,
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  notice: {
+    backgroundColor: BRAND.card,
+    borderWidth: 1,
+    borderColor: BRAND.border,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+  },
+  noticeText: {
+    fontSize: 15,
+    color: BRAND.text,
+    lineHeight: 22,
+  },
+  noticeEmail: {
+    fontWeight: "600",
+  },
+  spamHint: {
+    fontSize: 13,
+    color: BRAND.textSecondary,
+    lineHeight: 20,
+    marginTop: 10,
+  },
+  label: { fontSize: 14, fontWeight: "600", color: BRAND.text, marginBottom: 6 },
+  input: {
+    borderWidth: 1,
+    borderColor: BRAND.border,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: BRAND.card,
+    marginBottom: 16,
+    color: BRAND.text,
+  },
+  codeInput: {
+    letterSpacing: 8,
+    textAlign: "center",
+    fontSize: 24,
+    fontWeight: "700",
+  },
+  inputError: { borderColor: BRAND.error },
+  info: {
+    color: BRAND.accent,
+    fontSize: 14,
+    marginTop: 16,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  error: {
+    color: BRAND.error,
+    fontSize: 14,
+    marginTop: 16,
+    textAlign: "center",
+  },
+  button: {
+    backgroundColor: BRAND.primary,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  buttonText: { color: "#fff", fontWeight: "600", fontSize: 16 },
+  pressed: { opacity: 0.85 },
+  disabled: { opacity: 0.6 },
+  link: { marginTop: 20, alignItems: "center" },
+  linkText: { color: BRAND.textSecondary, fontSize: 14 },
+  linkBold: { color: BRAND.accent, fontWeight: "600" },
+});

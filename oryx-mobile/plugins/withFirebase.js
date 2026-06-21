@@ -50,12 +50,84 @@ function withModularHeaders(config) {
       if (fs.existsSync(podfilePath)) {
         let podfile = fs.readFileSync(podfilePath, "utf8");
 
-        if (!podfile.includes("use_modular_headers!")) {
+        // Bump platform to 16.0 for ML Kit compatibility
+        podfile = podfile.replace(
+          /^platform :ios,.*$/m,
+          "platform :ios, '16.0'"
+        );
+
+        // Remove use_modular_headers! if present (not compatible with RNFB)
+        podfile = podfile.replace(/^use_modular_headers!\n?/m, "");
+
+        // Add $RNFirebaseAsStaticFramework flag
+        if (!podfile.includes("RNFirebaseAsStaticFramework")) {
           podfile = podfile.replace(
             /^(platform :ios.*)$/m,
-            "$1\nuse_modular_headers!"
+            `$RNFirebaseAsStaticFramework = true\n$1`
           );
-          fs.writeFileSync(podfilePath, podfile, "utf8");
+        }
+
+        // Disable pre-compiled RN distribution (conflicts with static framework linking)
+        if (!podfile.includes("Disable prebuilt RN")) {
+          podfile = podfile.replace(
+            /^(platform :ios.*)$/m,
+            `# Disable prebuilt RN for static framework compatibility with RNFB\nENV['RCT_USE_RN_DEP'] = '0'\nENV['RCT_USE_PREBUILT_RNCORE'] = '0'\n$1`
+          );
+        }
+
+        // Add use_frameworks! :linkage => :static before prepare_react_native_project!
+        if (!podfile.includes("use_frameworks! :linkage => :static")) {
+          podfile = podfile.replace(
+            /(prepare_react_native_project!\n)/,
+            `use_frameworks! :linkage => :static\n\n$1`
+          );
+        }
+
+        // Inject post_install fixes
+        if (!podfile.includes("RNFB post_install fix")) {
+          const postInstallCode = `
+    # RNFB post_install fix
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |bc|
+        bc.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
+      end
+    end
+`;
+          podfile = podfile.replace(
+            /(post_install do \|installer\|\n)/,
+            `$1${postInstallCode}\n`
+          );
+        }
+
+        fs.writeFileSync(podfilePath, podfile, "utf8");
+      }
+
+      // Patch RNFBFirestore/RNFBStorage headers to add missing React import
+      // (known issue: https://github.com/invertase/react-native-firebase/issues/8988)
+      const rnfbModules = ["firestore", "storage"];
+      for (const mod of rnfbModules) {
+        const iosDir = path.join(
+          projectRoot,
+          "node_modules",
+          `@react-native-firebase/${mod}`,
+          "ios",
+          `RNFB${mod.charAt(0).toUpperCase() + mod.slice(1)}`
+        );
+        if (fs.existsSync(iosDir)) {
+          const files = fs.readdirSync(iosDir);
+          for (const file of files) {
+            if (file.endsWith(".h") || file.endsWith(".m")) {
+              const filePath = path.join(iosDir, file);
+              let content = fs.readFileSync(filePath, "utf8");
+              if (
+                content.includes("RCTPromiseRejectBlock") &&
+                !content.includes("#import <React/RCTBridgeModule.h>")
+              ) {
+                content = `#import <React/RCTBridgeModule.h>\n${content}`;
+                fs.writeFileSync(filePath, content, "utf8");
+              }
+            }
+          }
         }
       }
 
