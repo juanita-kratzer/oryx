@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { Contact, requestPermissionsAsync } from "../lib/contacts";
+import { Contact, requestPermissionsAsync, isContactsAvailable, CONTACTS_UNAVAILABLE_MESSAGE } from "../lib/contacts";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
   fetchExchangeRequest,
@@ -45,6 +45,11 @@ export function ExchangeDetailScreen({ route, navigation }: Props) {
   }, [requestId, routeLead, navigation]);
 
   const saveLeadToContacts = async (lead: BusinessCardExchangeLead) => {
+    if (!isContactsAvailable()) {
+      Alert.alert("Contacts Unavailable", CONTACTS_UNAVAILABLE_MESSAGE);
+      return;
+    }
+
     const { status } = await requestPermissionsAsync();
     if (status !== "granted") {
       Alert.alert(
@@ -58,23 +63,35 @@ export function ExchangeDetailScreen({ route, navigation }: Props) {
     const givenName = nameParts.slice(0, -1).join(" ") || nameParts[0] || "";
     const familyName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
 
-    await Contact.create({
-      givenName,
-      familyName,
-      ...(lead.phone ? { phones: [{ label: "mobile", number: lead.phone }] } : {}),
-      ...(lead.email ? { emails: [{ label: "work", address: lead.email }] } : {}),
-      ...(lead.jobTitle ? { jobTitle: lead.jobTitle } : {}),
-      ...(lead.company ? { company: lead.company } : {}),
-      ...(lead.notes ? { note: lead.notes } : {}),
-    });
+    try {
+      await Contact.create({
+        givenName,
+        familyName,
+        ...(lead.phone ? { phones: [{ label: "mobile", number: lead.phone }] } : {}),
+        ...(lead.email ? { emails: [{ label: "work", address: lead.email }] } : {}),
+        ...(lead.jobTitle ? { jobTitle: lead.jobTitle } : {}),
+        ...(lead.company ? { company: lead.company } : {}),
+        ...(lead.notes ? { note: lead.notes } : {}),
+      });
 
-    Alert.alert("Contact Saved", `${lead.name} has been added to your contacts.`);
+      Alert.alert("Contact Saved", `${lead.name} has been added to your contacts.`);
+    } catch (e) {
+      Alert.alert(
+        "Error",
+        e instanceof Error ? e.message : "Failed to save contact."
+      );
+    }
   };
 
   const handleAccept = async () => {
     if (!request) return;
     setProcessing(true);
     try {
+      if (!isContactsAvailable()) {
+        Alert.alert("Contacts Unavailable", CONTACTS_UNAVAILABLE_MESSAGE);
+        return;
+      }
+
       const { status } = await requestPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(

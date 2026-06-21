@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { Contact, requestPermissionsAsync } from "../lib/contacts";
+import { Contact, requestPermissionsAsync, isContactsAvailable, CONTACTS_UNAVAILABLE_MESSAGE } from "../lib/contacts";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { saveScannedContact } from "../lib/exchanges";
 import { BRAND } from "../constants/colors";
@@ -37,6 +37,11 @@ export function ReviewScannedContactScreen({ route, navigation }: Props) {
 
     setSaving(true);
     try {
+      if (!isContactsAvailable()) {
+        Alert.alert("Contacts Unavailable", CONTACTS_UNAVAILABLE_MESSAGE);
+        return;
+      }
+
       const { status } = await requestPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(

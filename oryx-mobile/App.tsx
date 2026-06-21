@@ -18,7 +18,6 @@ import { MainTabNavigator } from "./src/navigation/MainTabNavigator";
 import { TemplateGalleryScreen } from "./src/screens/TemplateGalleryScreen";
 import { CardEditorRouter } from "./src/navigation/CardEditorRouter";
 import { CardDeliveryScreen } from "./src/screens/CardDeliveryScreen";
-import { ExchangeListScreen } from "./src/screens/ExchangeListScreen";
 import { ExchangeDetailScreen } from "./src/screens/ExchangeDetailScreen";
 import { ScanCardScreen } from "./src/screens/ScanCardScreen";
 import { ReviewScannedContactScreen } from "./src/screens/ReviewScannedContactScreen";
@@ -86,15 +85,6 @@ function AppNavigator() {
               headerShown: true,
               title: "Card",
               headerBackTitle: "Cards",
-            }}
-          />
-          <Stack.Screen
-            name="SmartExchanges"
-            component={ExchangeListScreen}
-            options={{
-              headerShown: true,
-              title: "Smart Exchanges",
-              headerBackTitle: "Back",
             }}
           />
           <Stack.Screen

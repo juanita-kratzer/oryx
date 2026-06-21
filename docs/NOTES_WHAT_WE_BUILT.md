@@ -6,14 +6,25 @@ This file summarizes the Oryx Wallet Cards app and everything implemented so you
 
 ## What this app is
 
-- **iOS mobile app** (Expo / React Native) for creating **digital wallet-style cards** — business cards, **QR / barcode membership cards** (loyalty, gym, library, student ID, etc.), event tickets, coupons, gift cards, loyalty cards, gym membership/class pass, generic cards.
+**Scope (Jun 21, 2026):** The live product is intentionally small — three tabs and two create flows. Slow iOS builds come from the native stack (Firebase, Reanimated, New Architecture, CocoaPods), not from a large feature surface.
+
+| Area | What exists |
+|------|-------------|
+| **Tabs** | **Contacts** · **Cards** (center, raised) · **Account** |
+| **Create cards** | Template gallery → **Business Card** or **QR / Barcode Card** only |
+| **Contacts** | Scan business card (OCR) → review → save; scanned contacts + Smart Exchange leads in one list |
+| **Account** | Profile, card credits (placeholder), light/dark mode, change email/password |
+| **Backend** | Next.js — auth, `/api/cards/sync`, PassKit, public `/c/[slug]`, Smart Exchange API |
+
+- **iOS mobile app** (Expo / React Native) for **digital wallet-style cards** — active creators: **business cards** and **QR / barcode membership cards** (loyalty, gym, library, student ID, etc.).
+- **Template library (kept, not all in gallery):** `oryx-mobile/src/templates/*` + `engine/CardRenderer` — event ticket, coupon, gift card, loyalty, gym membership/class pass, generic. Used for **preview** if old cards exist in Firestore; **not** editable in the app anymore.
 - **Next.js backend** (`src/`) serves public card landing pages, PassKit, Smart Exchange API, owner dashboard, and auth/email APIs used by mobile.
 - **Dual data stack:**
   - **Mobile:** Firebase Auth + Firestore + Storage (cards, scanned contacts, legacy exchange requests).
   - **Public web / PassKit / leads:** Supabase Postgres via Prisma (synced from mobile via `/api/cards/sync`).
 - Business Cards support **Smart Exchange** — present or share your card from the phone; recipient opens `/c/[slug]`, saves your contact, and can share details back. Transport (QR, link, Wallet, AirDrop, etc.) is flexible; outcome is what matters.
 - Users can **scan physical business cards** (OCR), review parsed contact info, and save to iPhone Contacts + Firestore.
-- **UI:** Ionicons only (no emojis). Bottom tabs: **Contacts** | **Cards** (center/home, raised) | **Account**. Light/dark theme toggle on Account.
+- **UI:** Ionicons only (no emojis). Bottom tabs: **Contacts** | **Cards** (center/home, raised) | **Account**. Light/dark mode toggles on Account use custom **`AppSwitch`** (black/white, not system green).
 
 **Positioning (recommended):** “The business card that exchanges details automatically” / “Tap. Connect. Exchange.” — not “digital NFC card.”
 
@@ -102,18 +113,20 @@ Use iOS for: real Firebase, camera/OCR, Apple Wallet, Contacts, Share sheet, Tes
 |------|-----------|
 | Entry | `index.ts` → `StartupRoot.tsx` → `App.tsx` |
 | Tabs | `src/navigation/MainTabNavigator.tsx` + `lib/screenInsets.ts` — see **Bottom tab bar** below |
-| Business card creator | `CardEditorRouter.tsx` → `BusinessCardCreateScreen.tsx` (simplified Edit/View, not full canvas editor) |
+| Business card creator | `CardEditorRouter.tsx` → `BusinessCardCreateScreen.tsx` (Edit/View preview, not canvas editor) |
 | QR / Barcode card | `CardEditorRouter.tsx` → `QrBarcodeCardCreateScreen.tsx` — manual entry + camera scan (`BarcodeScanModal`, `expo-camera`); private card, no Smart Exchange |
+| Unsupported templates | `CardEditorRouter` shows “can’t edit this type” for legacy `templateId`s (no full editor) |
 | QR / Barcode preview | `components/qrBarcode/` — `QrBarcodeCardPreview`, `ScannableCodeDisplay`, `BarcodeSvg` (jsbarcode) |
 | Template gallery | `TemplateGalleryScreen.tsx` — sections: **Business** \| **Memberships & Rewards** (`data/templateGallery.ts`) |
 | Theme | `contexts/ThemeContext.tsx`, `lib/themeStorage.ts` — light/dark on Account |
+| Toggles | `components/AppSwitch.tsx` — custom Pressable switch (gray off / black on / white thumb); RN `Switch` ignored colors on web |
 | Business card UI | `components/businessCard/` — `EditViewToggle`, `AppleWalletPreview`, `ThemeColorDropdown` |
 | Wallet theme colours | `constants/ambtnThemeColors.ts` — AMBTN palette + Oryx (white, default) + Onyx (black) |
-| Other templates | `EditorScreen.tsx` + `src/editor/*`, `src/templates/*` (incl. gym membership/class pass) |
+| Template previews (legacy) | `src/templates/*` + `engine/CardRenderer.tsx` — read-only preview in `CardDetailPreview` for non-business/non-QR cards |
 | Smart Exchange (mobile) | `components/cards/SmartExchangeSection.tsx`, `CardQrCode.tsx`, `CardDetailPreview.tsx` |
 | Card URLs / sync | `lib/cardLinks.ts`, `lib/cardSync.ts`, `lib/exchangesApi.ts`, `lib/cardsEvents.ts` |
-| Card delivery | `CardDeliveryScreen.tsx` — preview with QR, edit, Wallet + Share (business), Wallet only (QR/barcode), **Allow Smart Exchange** toggle (business only), delete |
-| Exchanges (leads) | `ExchangeListScreen.tsx`, `ExchangeDetailScreen.tsx` (API + legacy Firestore pending requests) |
+| Card delivery | `CardDeliveryScreen.tsx` — preview (no “Your card” caption), edit, Wallet + Share (business), Wallet only (QR/barcode), **Allow Smart Exchange** toggle (`AppSwitch`, business only), delete |
+| Exchange detail | `ExchangeDetailScreen.tsx` — opened from Contacts tab Smart Exchange leads (API + legacy Firestore pending requests) |
 | Contacts tab | `ScannedContactsScreen.tsx` — **Scan business card**, scanned/manual contacts, Smart exchanged contacts |
 | Account | `AccountScreen.tsx` — Card Credits (placeholder), **Appearance** (light/dark), security, sign out |
 | Scan business card | Contacts tab → `ScanCardScreen.tsx`, `ReviewScannedContactScreen.tsx` |
@@ -122,6 +135,7 @@ Use iOS for: real Firebase, camera/OCR, Apple Wallet, Contacts, Share sheet, Tes
 | Safe area | `App.tsx` wraps `SafeAreaProvider`; tab screens use `useTabBarInsets()` for top/bottom padding |
 | Firestore | `lib/firestore.ts` / `firestore.web.ts` |
 | Platform shims | `*.web.ts` for imagePicker, contacts, fileSystem, etc. |
+| Contacts (native) | `lib/contacts.ts` — lazy-loads `expo-contacts` (~15.0.11, SDK 54); `Contact.create` wraps `addContactAsync`; `isContactsAvailable()` + graceful alerts if native module missing |
 
 ### Next.js + Prisma (`src/`, `prisma/`)
 
@@ -253,11 +267,11 @@ After purchase, open **My Cards** → card → **Card** (`CardDeliveryScreen`):
 
 | UI area | What it shows / does |
 |---------|----------------------|
-| **Card preview** | `CardDetailPreview` / `AppleWalletPreview` with contact fields + **QR code** (“Scan to open card”) |
+| **Card preview** | `CardDetailPreview` / `AppleWalletPreview` — contact fields + QR (single label: “Scan to open card”; no duplicate footer line; no “Your card” heading on delivery) |
 | **Edit card** | Opens `BusinessCardCreateScreen` in edit mode |
 | **Add to Apple Wallet** | Downloads `.pkpass` via `GET /api/passes/{cardId}` |
 | **Share card** | Native Share sheet — message + `/c/{slug}` link (Messages, AirDrop, etc.) |
-| **Card settings** (business) | Hint text + **Allow Smart Exchange** toggle (black/white `Switch`; syncs via `syncCardToApi`) |
+| **Card settings** (business) | Hint text + **Allow Smart Exchange** toggle (`AppSwitch` black/white; syncs via `syncCardToApi`) |
 | **Delete card** | Confirmation modal → Firestore + API delete → `navigation.reset` to **Cards** tab; list refreshes via `cardsEvents` |
 
 **Removed from delivery screen:** separate **QR Code** button and `PresentCardModal` (QR is on the preview). No **Copy card link** in main UX.
@@ -309,7 +323,7 @@ Helpers: `getCardPublicUrl`, `getCardNfcUrl`, `getCardQrPayload`, `getCardWallet
 - **Contacts tab → Smart exchanged contacts:** `fetchBusinessCardExchanges` from `/api/exchanges`; tap opens `ExchangeDetailScreen`
 - **Contacts tab → From business cards & manual entry:** Firestore `scannedContacts` (OCR + review save); web preview uses `localStorage`
 - **Web:** `/exchanges` dashboard (CSV export)
-- **Legacy:** `ExchangeListScreen` still available in stack for pending Firestore `exchangeRequests` (no longer linked from Account)
+- **Legacy:** `ExchangeDetailScreen` can still show pending Firestore `exchangeRequests` when opened with `requestId` (no separate exchange list screen in nav)
 - Owner email on new lead if SendGrid configured (non-blocking)
 
 ### Mobile → Prisma bridge
@@ -326,7 +340,7 @@ After create/update, mobile calls `syncCardToApi` → `POST /api/cards/sync` wit
 
 On every **business** card create/edit, Firestore stores `publicUrl`, `nfcUrl`, and `qrUrl` (`buildCardLinkFields`). **QR / Barcode cards** omit these link fields.
 
-**Removed from main UX:** `NfcQrSection`, `PresentCardModal.tsx`, help pages about NFC tagging. Account **Smart Exchanges** shortcut removed (leads live on Contacts tab). `nfcWrite.ts` + `react-native-nfc-manager` remain for optional canvas-editor NFC elements only.
+**Removed from main UX:** `NfcQrSection`, `PresentCardModal.tsx`, help pages about NFC tagging. Account **Smart Exchanges** shortcut removed (leads live on Contacts tab). Full canvas **editor** removed Jun 21 — see **Removed / deprecated** below.
 
 ### QA checklist (Smart Exchange)
 
@@ -350,6 +364,10 @@ On every **business** card create/edit, Firestore stores `publicUrl`, `nfcUrl`, 
 | `NfcQrSection.tsx` | **Deleted** — replaced by `SmartExchangeSection` |
 | `PresentCardModal.tsx` | **Deleted** — QR shown on card preview instead |
 | `WebDevBanner.tsx` | **Deleted** — blue “Web preview” banner removed from `App.tsx` |
+| Canvas editor (`src/editor/*`, `EditorScreen`, `CardEditorScreen`) | **Deleted Jun 21** — gallery only routes Business + QR/Barcode; legacy cards preview-only |
+| `ExchangeListScreen.tsx` | **Deleted Jun 21** — exchange leads live on Contacts tab |
+| `data/templates.ts` (`LOCAL_TEMPLATES`) | **Deleted** — unused form-template system |
+| `nfcWrite.ts`, `lib/vcard.ts`, `WebUnsupportedScreen.tsx`, `src/fonts/*` | **Deleted Jun 21** — unused |
 | Root marketing landing | Removed earlier; `/` is minimal |
 | Firebase Hosting `exchange.js` | Legacy; primary path is Next.js `/c/[slug]` |
 
@@ -357,10 +375,11 @@ On every **business** card create/edit, Firestore stores `publicUrl`, `nfcUrl`, 
 
 ## Other key features
 
-### Canva-like editor (non-business / non-QR-barcode templates)
+### Template library (preview only)
 
-- Templates: business + QR/barcode (dedicated screens), event, coupon, gift, loyalty, generic, gym membership, gym class pass
-- Canvas editor with drag, inspector panels, fonts, backgrounds, QR/NFC elements
+- **Gallery (create):** Business Card, QR / Barcode Card (`data/templateGallery.ts`)
+- **Kept in repo:** `templates/` definitions (event, coupon, gift, loyalty, gym membership/class pass, generic) + `engine/CardRenderer` for read-only preview in `CardDetailPreview` if a user still has an old card of that type
+- **Not in app:** drag-and-drop canvas editor (removed Jun 21)
 
 ### Firebase Authentication
 
@@ -391,7 +410,7 @@ On every **business** card create/edit, Firestore stores `publicUrl`, `nfcUrl`, 
 
 ## Dependencies (key)
 
-**Mobile:** Expo SDK 54, React Native Firebase, `react-native-qrcode-svg`, `expo-camera`, `jsbarcode`, `@xmldom/xmldom`, ML Kit text recognition, `expo-contacts`. (`react-native-purchases` in package.json but unused during build phase.)
+**Mobile:** Expo SDK 54, React Native Firebase, `react-native-qrcode-svg`, `expo-camera`, `jsbarcode`, `@xmldom/xmldom`, ML Kit text recognition, `expo-contacts` (~15.0.11 — must match SDK; v56 uses `ExpoContactsNext` and crashes on SDK 54 builds). (`react-native-purchases` in package.json but unused during build phase.)
 
 **Root:** Next.js, Prisma, `passkit-generator`, `qrcode`, `@sendgrid/mail`, `firebase-admin` (optional), Supabase storage for pass files.
 
@@ -404,8 +423,9 @@ On every **business** card create/edit, Firestore stores `publicUrl`, `nfcUrl`, 
 cd /Users/juanitakratzer/OryxWalletApp && npm run dev    # :3000
 cd oryx-mobile && npm run dev                          # :8081
 
-# iOS native rebuild (after native dep changes)
-cd oryx-mobile && npx expo prebuild --platform ios && cd ios && pod install && open Oryx.xcworkspace
+# iOS native rebuild (after native dep changes, e.g. expo-contacts)
+cd oryx-mobile && npx expo run:ios
+# Or: npx expo prebuild --platform ios && cd ios && pod install && open Oryx.xcworkspace
 
 # Prisma seed (qr-barcode-card template, etc.)
 cd /Users/juanitakratzer/OryxWalletApp && npx prisma db seed
@@ -433,9 +453,10 @@ cd /Users/juanitakratzer/OryxWalletApp && npm run db:migrate
 - **Supabase Postgres down** — `npm run db:migrate` fails (`tenant not found`). OTP uses file store; public landing/exchanges need DB when testing full flow locally.
 - **Google Wallet** — not implemented; reciprocal UI shows “coming soon.”
 - **Identity split** — mobile Firebase uid vs Prisma `User`; bridged via `firebaseUid` + sync API.
-- **Legacy** — `web/public/exchange.js` and Firestore `exchangeRequests` coexist with Prisma leads; `ExchangeListScreen` merges API leads + pending Firestore requests (not linked from Account UI).
+- **Legacy** — `web/public/exchange.js` and Firestore `exchangeRequests` coexist with Prisma leads; `ExchangeDetailScreen` can merge API leads + pending Firestore requests when applicable.
 - AMBTN theme colours are **mirrored** in `ambtnThemeColors.ts`; do not edit the AMBTN project.
-- **NFC hardware write** — not exposed in Smart Exchange UI; do not document as user-facing feature unless re-added deliberately.
+- **NFC hardware write** — not exposed in UI; `react-native-nfc-manager` may remain in deps but no user-facing NFC write flow.
+- **`expo-contacts` iOS crash (fixed Jun 21)** — `expo-contacts@56` was installed on SDK 54; JS looked for native module `ExpoContactsNext` which was never in the iOS binary (`Podfile.lock` had no Contacts pod). Fixed by pinning `~15.0.11`, running `pod install` (`ExpoContacts`), lazy-loading in `lib/contacts.ts`, and graceful UI when unavailable. **Requires a native rebuild** (`npx expo run:ios` or Xcode) before Save to Contacts works on device.
 
 ---
 
@@ -451,8 +472,8 @@ cd /Users/juanitakratzer/OryxWalletApp && npm run db:migrate
 | UX | Card credits purchase flow (Account → Card Credits row is placeholder) |
 | UX | Dark mode: many stack screens still use static `BRAND` import — tabs + Account themed |
 | QR/Barcode | Run `npx prisma db seed` on deploy; device-test scan → save → Wallet pass |
-| Cleanup | Deprecate Firebase Hosting exchange page once Prisma path is production-only |
+| iOS | Rebuild after `expo-contacts` fix: `cd oryx-mobile && npx expo run:ios`; test Save to Contacts on ExchangeDetail + ReviewScannedContact |
 
 ---
 
-*Last updated: Jun 21, 2026 — QR / Barcode Card, tab bar spacing/safe-area polish, WebDevBanner removed, web top padding, Vercel + GitHub main.*
+*Last updated: Jun 21, 2026 — expo-contacts crash fix (SDK 54 pin + lazy load), legacy editor removed, AppSwitch toggles, delivery preview copy fixes, QR/Barcode Card, tab bar, WebDevBanner removed, Vercel + GitHub main.*

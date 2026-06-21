@@ -34,7 +34,7 @@ export function CardDetailPreview({ card }: Props) {
 
     return (
       <AppleWalletPreview
-        caption="Your card"
+        showCaption={false}
         publicUrl={publicUrl}
         data={{
           businessName: card.business ?? "",
@@ -58,6 +58,7 @@ export function CardDetailPreview({ card }: Props) {
 
     return (
       <QrBarcodeCardPreview
+        showCaption={false}
         data={{
           cardName: card.name ?? "",
           organisation: card.business ?? "",
@@ -78,7 +79,6 @@ export function CardDetailPreview({ card }: Props) {
   if (template) {
     return (
       <View style={styles.templatePreview}>
-        <Text style={styles.caption}>Your card</Text>
         <CardRenderer document={template.factory()} width={previewWidth} />
       </View>
     );
@@ -90,7 +90,6 @@ export function CardDetailPreview({ card }: Props) {
 
   return (
     <View style={styles.fallback}>
-      <Text style={styles.caption}>Your card</Text>
       <View style={[styles.fallbackCard, { backgroundColor: bg }]}>
         <Text style={[styles.fallbackName, { color: onBg }]}>
           {card.name || card.business || "Your Card"}
@@ -108,14 +107,6 @@ const styles = StyleSheet.create({
   templatePreview: {
     alignItems: "center",
     marginBottom: 8,
-  },
-  caption: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: BRAND.textSecondary,
-    marginBottom: 12,
-    letterSpacing: 0.2,
-    textAlign: "center",
   },
   fallback: {
     marginBottom: 16,

@@ -21,6 +21,7 @@ export type QrBarcodePreviewData = {
 type Props = {
   data: QrBarcodePreviewData;
   caption?: string;
+  showCaption?: boolean;
 };
 
 function isLightColor(hex: string) {
@@ -33,14 +34,18 @@ function isLightColor(hex: string) {
   return luminance > 0.65;
 }
 
-export function QrBarcodeCardPreview({ data, caption = "Your card" }: Props) {
+export function QrBarcodeCardPreview({
+  data,
+  caption = "Your card",
+  showCaption = true,
+}: Props) {
   const bg = data.backgroundColor || AMBTN_DEFAULT_THEME_COLOR;
   const onBg = isLightColor(bg) ? BRAND.text : "#ffffff";
   const onBgMuted = isLightColor(bg) ? BRAND.textSecondary : "rgba(255,255,255,0.78)";
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.caption}>{caption}</Text>
+      {showCaption ? <Text style={styles.caption}>{caption}</Text> : null}
       <View style={[styles.card, { backgroundColor: bg }]}>
         <View style={styles.header}>
           {data.logoUri ? (

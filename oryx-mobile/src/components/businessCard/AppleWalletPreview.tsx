@@ -113,13 +113,13 @@ export function AppleWalletPreview({
             {publicUrl ? (
               <CardQrCode url={publicUrl} size={100} />
             ) : (
-              <View style={styles.barcode}>
-                <View style={styles.barcodeLines} />
-              </View>
+              <>
+                <View style={styles.barcode}>
+                  <View style={styles.barcodeLines} />
+                </View>
+                <Text style={styles.footerHint}>Your card link appears on your pass</Text>
+              </>
             )}
-            <Text style={styles.footerHint}>
-              {publicUrl ? "Scan to open your card" : "Your card link appears on your pass"}
-            </Text>
           </View>
         ) : null}
       </View>

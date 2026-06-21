@@ -27,8 +27,6 @@ export default {
         ITSAppUsesNonExemptEncryption: false,
         NSContactsUsageDescription: "Oryx needs access to your contacts to save business card information.",
         NSCameraUsageDescription: "Oryx needs camera access to scan business cards and membership barcodes.",
-        NFCReaderUsageDescription:
-          "Oryx writes your card link to NFC tags so people can tap your tag to open your card.",
       },
     },
     android: {
@@ -65,7 +63,6 @@ export default {
       "./plugins/withXcodeSettings",
       "./plugins/withFmtFix",
       "./plugins/withFirebase",
-      "react-native-nfc-manager",
     ],
     extra: {
       revenuecatApiKey: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY,
