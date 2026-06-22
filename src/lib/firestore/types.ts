@@ -5,6 +5,8 @@ export type CardStatus = "DRAFT" | "PAID";
 export type ApplePassMeta = {
   fileUrl?: string;
   version?: number;
+  /** Bump when pass bundle requirements change (e.g. required icons). */
+  formatVersion?: number;
   generatedAt?: string;
 };
 

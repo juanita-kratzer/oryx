@@ -14,6 +14,9 @@ function passResponseHeaders(slug: string): HeadersInit {
   };
 }
 
+/** Increment when pass bundle requirements change so cached passes are rebuilt. */
+const PASS_FORMAT_VERSION = 2;
+
 /**
  * Build or return a cached Apple Wallet pass for a PAID card.
  */
@@ -27,6 +30,7 @@ export async function deliverApplePass(
   if (
     existingPass?.fileUrl &&
     existingPass.generatedAt &&
+    (existingPass.formatVersion ?? 1) >= PASS_FORMAT_VERSION &&
     new Date(existingPass.generatedAt) >= cardUpdatedAt
   ) {
     return Response.redirect(existingPass.fileUrl, 302);
@@ -57,6 +61,7 @@ export async function deliverApplePass(
     await updateApplePassMeta(card.ownerId, card.id, {
       fileUrl,
       version,
+      formatVersion: PASS_FORMAT_VERSION,
       generatedAt: new Date().toISOString(),
     });
   } catch (err) {

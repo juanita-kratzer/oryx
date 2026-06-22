@@ -6,6 +6,7 @@
 import { PKPass } from "passkit-generator";
 import { getPassKitCertificates, getPassKitIds } from "./signer";
 import { normalizePassBackgroundColor } from "./backgroundColor";
+import { loadDefaultPassAssets } from "./passAssets";
 import { getCardWalletUrl } from "@/lib/cardLinks";
 import { isQrBarcodeCardTemplate, QR_BARCODE_TEMPLATE_SLUG } from "@/lib/cardTemplates";
 import { normalizeWalletBarcodeFormat } from "@/lib/passkit/barcodeFormats";
@@ -62,13 +63,13 @@ export async function buildPass(card: CardWithTemplate): Promise<Buffer> {
   const ids = getPassKitIds();
   const layout = template.passLayout as PassLayout;
 
-  const buffers: Record<string, Buffer> = {};
+  const buffers: Record<string, Buffer> = loadDefaultPassAssets();
 
   if (card.logoUrl) {
     try {
       const buf = await fetchImageBuffer(card.logoUrl);
-      buffers["icon.png"] = buf;
       buffers["logo.png"] = buf;
+      buffers["logo@2x.png"] = buf;
     } catch (e) {
       console.warn("PassKit: could not fetch logo", e);
     }

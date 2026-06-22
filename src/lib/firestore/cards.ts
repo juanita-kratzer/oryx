@@ -100,7 +100,12 @@ export async function slugIndexExists(slug: string): Promise<boolean> {
 export async function updateApplePassMeta(
   ownerId: string,
   cardId: string,
-  meta: { fileUrl: string; version: number; generatedAt: string }
+  meta: {
+    fileUrl: string;
+    version: number;
+    formatVersion?: number;
+    generatedAt: string;
+  }
 ): Promise<void> {
   const db = getFirestoreAdmin();
   await db.collection("users").doc(ownerId).collection("cards").doc(cardId).update({

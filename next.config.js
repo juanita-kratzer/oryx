@@ -2,6 +2,10 @@
 const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["firebase-admin"],
+    outputFileTracingIncludes: {
+      "/api/passes/[cardId]": ["./src/lib/passkit/assets/**/*"],
+      "/api/public/cards/[slug]/pass": ["./src/lib/passkit/assets/**/*"],
+    },
   },
   images: {
     remotePatterns: [
