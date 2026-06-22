@@ -1,0 +1,43 @@
+---
+description: When the user says "boom", run the full ship pipeline
+alwaysApply: true
+---
+
+# Boom
+
+When the user says **boom** (any casing: Boom, BOOM), run this full pipeline without asking for confirmation:
+
+## 1. Commit
+
+- `git status`, `git diff`, `git log -3` to scope the commit
+- Stage all relevant changes; **never** commit secrets (`.env`, `.env.local`, `*-firebase-adminsdk-*.json`, certs, keys)
+- Commit with a concise message focused on **why**
+- If nothing to commit, skip to step 2
+
+## 2. Push
+
+- `git push origin main` (or current branch with `-u` if needed)
+
+## 3. Deploy
+
+- From repo root: `npx vercel deploy --prod --yes`
+- If Firebase rules/storage changed and CLI is authed: `firebase deploy --only firestore,storage --project oryx-wallet-cards-2db19`
+
+## 4. iOS build, sync, open Xcode
+
+From `oryx-mobile/`:
+
+```bash
+npm install
+npx expo prebuild --platform ios
+open ios/Oryx.xcworkspace
+```
+
+- Use `--clean` only if native config changed (Firebase plist, plugins, bundle ID, new native deps)
+- `expo prebuild` runs CocoaPods; no separate `pod install` unless prebuild fails
+
+## 5. Report
+
+Brief summary: commit hash, push status, deploy URL, Xcode opened, anything skipped or failed.
+
+Do not treat "boom" as a partial request — run the **entire** sequence unless a step is blocked (then fix or report clearly).

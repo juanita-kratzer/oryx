@@ -15,24 +15,14 @@ function withGoogleServicePlist(config) {
       const projectRoot = cfg.modRequest.projectRoot;
       const iosPath = path.join(projectRoot, "ios");
 
-      const src = path.join(projectRoot, "..", "GoogleService-Info.plist");
+      const src = path.join(projectRoot, "GoogleService-Info.plist");
       const targetName = cfg.modRequest.projectName || "Oryx";
       const dest = path.join(iosPath, targetName, "GoogleService-Info.plist");
 
       if (fs.existsSync(src)) {
         fs.copyFileSync(src, dest);
       } else {
-        const altSrc = path.join(projectRoot, "GoogleService-Info.plist");
-        if (fs.existsSync(altSrc)) {
-          fs.copyFileSync(altSrc, dest);
-        } else {
-          console.warn(
-            "[withFirebase] GoogleService-Info.plist not found at:",
-            src,
-            "or",
-            altSrc
-          );
-        }
+        console.warn("[withFirebase] GoogleService-Info.plist not found at:", src);
       }
 
       return cfg;

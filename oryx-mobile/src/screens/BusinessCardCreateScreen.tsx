@@ -83,7 +83,6 @@ export function BusinessCardCreateScreen({ route, navigation }: Props) {
     };
   }, [editCardId]);
 
-  const nfcUrl = getCardNfcUrl(cardSlug);
   const qrUrl = getCardQrPayload(cardSlug);
 
   const previewData = {

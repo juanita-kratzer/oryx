@@ -64,7 +64,7 @@ npm run dev
 ```
 EXPO_PUBLIC_APP_URL=http://localhost:3000
 # Required for Google Sign-In ID token (Firebase Console → Auth → Google → Web client ID):
-# EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=761069329191-xxxxxxxx.apps.googleusercontent.com
+# EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=39779450467-xxxxxxxx.apps.googleusercontent.com
 ```
 
 **Root `.env.local` (not committed):**
@@ -108,7 +108,7 @@ Use iOS for: real Firebase, camera/OCR, Apple Wallet, Contacts, Share sheet, Tes
 
 **OTP storage:** `.data/email-verification-codes.json` locally; **`/tmp/oryx-auth/` on Vercel** (serverless filesystem is read-only outside `/tmp`).
 
-**Firestore rules/indexes:** `firestore.rules`, `firestore.indexes.json` — deploy with `firebase deploy --only firestore --project oryx-wallet-cards` (requires Firebase CLI auth + IAM on project).
+**Firestore rules/indexes:** `firestore.rules`, `firestore.indexes.json` — deploy with `firebase deploy --only firestore --project oryx-wallet-cards-2db19`.
 
 ---
 
@@ -477,7 +477,7 @@ firebase deploy --only firestore --project oryx-wallet-cards
 ## Known issues
 
 - **Google Sign-In web client ID** — must set `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` in mobile `.env` and rebuild native app; enable Google provider in Firebase Console.
-- **Firebase CLI deploy** — `firebase deploy --only firestore` may fail with 403 until CLI account has `serviceusage.serviceUsageConsumer` on project `oryx-wallet-cards`; deploy rules via Console if needed.
+- **Firebase CLI deploy** — use `--project oryx-wallet-cards-2db19`; enable Firestore + Storage in Firebase Console first.
 - **Google Wallet** — not implemented; reciprocal UI shows “coming soon.”
 - **Legacy** — `web/public/exchange.js` and Firestore `exchangeRequests` coexist with Firestore `businessCardExchanges`; `ExchangeDetailScreen` can merge API leads + pending Firestore requests when applicable.
 - **Slug index** — older cards may lack `cardsBySlug` entry; re-save card or call sync API.
