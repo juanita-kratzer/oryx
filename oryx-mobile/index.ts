@@ -1,7 +1,7 @@
 import "react-native-gesture-handler";
 import { registerRootComponent } from "expo";
 import StartupRoot from "./StartupRoot";
-import { reportStartupError } from "./src/lib/startupError";
+import { reportStartupError, shouldReportUnhandledRejection } from "./src/lib/startupError";
 
 const g = globalThis as any;
 
@@ -19,6 +19,7 @@ if (typeof g.HermesInternal !== "undefined") {
   g.HermesInternal?.enablePromiseRejectionTracker?.({
     allRejections: true,
     onUnhandled: (_id: number, rejection: unknown) => {
+      if (!shouldReportUnhandledRejection(rejection)) return;
       reportStartupError(rejection);
     },
   });

@@ -1,4 +1,29 @@
+let bootComplete = false;
+
 type Listener = (message: string) => void;
+
+export function markBootComplete() {
+  bootComplete = true;
+}
+
+export function isBootComplete() {
+  return bootComplete;
+}
+
+function isBackgroundRejection(error: unknown): boolean {
+  const message = formatStartupError(error);
+  return (
+    message.includes("[storage/unauthorized]") ||
+    message.includes("[storage/object-not-found]") ||
+    message.includes("Logo upload skipped") ||
+    message.includes("finishCardSave failed")
+  );
+}
+
+export function shouldReportUnhandledRejection(error: unknown): boolean {
+  if (bootComplete && isBackgroundRejection(error)) return false;
+  return true;
+}
 
 let latestError: string | null = null;
 const listeners = new Set<Listener>();

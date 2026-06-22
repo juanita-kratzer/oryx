@@ -9,6 +9,7 @@ import {
 import { StartupErrorScreen } from "./src/components/StartupErrorScreen";
 import {
   formatStartupError,
+  markBootComplete,
   reportStartupError,
   subscribeStartupError,
 } from "./src/lib/startupError";
@@ -38,6 +39,7 @@ export default function StartupRoot() {
         if (cancelled) return;
         setAppComponent(() => module.default);
         setPhase("ready");
+        markBootComplete();
       } catch (error) {
         if (cancelled) return;
         const message = formatStartupError(error);
