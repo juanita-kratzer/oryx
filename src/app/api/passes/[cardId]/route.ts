@@ -65,6 +65,16 @@ export async function GET(request: Request, { params }: Params) {
         { status: 503 }
       );
     }
+    if (
+      message.includes("PassKit private key") ||
+      message.includes("not PEM") ||
+      message.includes("Invalid PEM")
+    ) {
+      return NextResponse.json(
+        { error: "PassKit certificates are misconfigured on the server." },
+        { status: 503 }
+      );
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

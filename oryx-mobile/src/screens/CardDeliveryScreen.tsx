@@ -6,17 +6,14 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
-  Linking,
   ScrollView,
-  Share,
   Modal,
 } from "react-native";
 import { AppSwitch } from "../components/AppSwitch";
-import { FileSystem } from "../lib/fileSystem";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
-import { fetchCard, markCardPaid, getPassDownloadUrl, updateCard, deleteCard } from "../lib/firestore";
-import { getAuth } from "../lib/firebase";
+import { fetchCard, markCardPaid, updateCard, deleteCard } from "../lib/firestore";
+import { downloadAndPresentAppleWalletPass } from "../lib/downloadAppleWalletPass";
 import { SmartExchangeSection } from "../components/cards/SmartExchangeSection";
 import { CardDetailPreview } from "../components/cards/CardDetailPreview";
 import { getCardPublicUrl } from "../lib/cardLinks";
@@ -97,49 +94,7 @@ export function CardDeliveryScreen({ route, navigation }: Props) {
     setDownloading(true);
 
     try {
-      const currentUser = getAuth().currentUser;
-      if (!currentUser) throw new Error("Not authenticated");
-      const token = await currentUser.getIdToken();
-
-      const url = getPassDownloadUrl(card.id);
-      const localPath = `${FileSystem.cacheDirectory}${card.slug}.pkpass`;
-
-      const download = await FileSystem.downloadAsync(url, localPath, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (download.status !== 200) {
-        let serverMessage = "";
-        try {
-          const errRes = await fetch(url, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const body = (await errRes.json()) as { error?: string };
-          serverMessage = body.error?.trim() ?? "";
-        } catch {
-          // ignore non-JSON error bodies
-        }
-        const hint =
-          download.status === 401
-            ? "Sign in again and retry."
-            : download.status === 404
-              ? "Card not found on the server. Try opening the card again."
-              : download.status === 503
-                ? serverMessage ||
-                  "Server is not fully configured yet (Firebase or PassKit)."
-                : download.status >= 500
-                  ? serverMessage ||
-                    "Pass could not be generated. Check server logs."
-                  : `Server returned ${download.status}.`;
-        throw new Error(`Download failed. ${hint}`);
-      }
-
-      const canOpen = await Linking.canOpenURL(localPath);
-      if (canOpen) {
-        await Linking.openURL(localPath);
-      } else {
-        await Share.share({ url: localPath });
-      }
+      await downloadAndPresentAppleWalletPass(card.id, card.slug);
     } catch (e) {
       Alert.alert("Error", e instanceof Error ? e.message : "Could not download pass");
     } finally {

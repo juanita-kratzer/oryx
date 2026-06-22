@@ -76,6 +76,7 @@ export default {
       "./plugins/withXcodeSettings",
       "./plugins/withFmtFix",
       "./plugins/withFirebase",
+      "./plugins/withPassKitWallet",
     ],
     extra: {
       revenuecatApiKey: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY,
