@@ -28,7 +28,7 @@ export async function presentAppleWalletPass(fileUri: string): Promise<void> {
   }
 
   const filePath = stripFileScheme(fileUri);
-  const added = await WalletManager.showViewControllerWithData(filePath);
+  const added = await WalletManager.showAddPassControllerFromFile(filePath);
   if (added === false) {
     // User dismissed the sheet — not an error.
     return;
