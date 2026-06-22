@@ -184,13 +184,6 @@ export function AccountScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Appearance</Text>
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>Light mode</Text>
-          <AppSwitch
-            value={!isDark}
-            onValueChange={(enabled) => setMode(enabled ? "light" : "dark")}
-          />
-        </View>
         <View style={[styles.row, styles.rowLast]}>
           <Text style={styles.rowLabel}>Dark mode</Text>
           <AppSwitch

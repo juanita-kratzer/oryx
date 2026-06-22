@@ -1,3 +1,4 @@
+import "react-native-gesture-handler";
 import { registerRootComponent } from "expo";
 import StartupRoot from "./StartupRoot";
 import { reportStartupError } from "./src/lib/startupError";

@@ -14,14 +14,16 @@ This file summarizes the Oryx Wallet Cards app and everything implemented so you
 | **Create cards** | Template gallery → **Business Card** or **QR / Barcode Card** only |
 | **Contacts** | Scan business card (OCR) → review → save; scanned contacts + Smart Exchange leads in one list |
 | **Account** | Profile, card credits (placeholder), light/dark mode, change email/password |
-| **Backend** | Next.js — auth, `/api/cards/sync`, PassKit, public `/c/[slug]`, Smart Exchange API |
+| **Backend** | Next.js + **Firestore** (firebase-admin) — auth OTP, slug index sync, PassKit, public `/c/[slug]`, Smart Exchange API |
+| **Auth** | Email/password + **Google Sign-In** (native iOS); Firebase Auth on mobile |
 
 - **iOS mobile app** (Expo / React Native) for **digital wallet-style cards** — active creators: **business cards** and **QR / barcode membership cards** (loyalty, gym, library, student ID, etc.).
 - **Template library (kept, not all in gallery):** `oryx-mobile/src/templates/*` + `engine/CardRenderer` — event ticket, coupon, gift card, loyalty, gym membership/class pass, generic. Used for **preview** if old cards exist in Firestore; **not** editable in the app anymore.
 - **Next.js backend** (`src/`) serves public card landing pages, PassKit, Smart Exchange API, owner dashboard, and auth/email APIs used by mobile.
-- **Dual data stack:**
-  - **Mobile + API:** Firebase Auth + Firestore + Storage (single source of truth).
-  - **Next.js API** reads/writes the same Firestore via `firebase-admin` (PassKit, public `/c/[slug]`, Smart Exchange, auth OTP).
+- **Single data stack:** Firebase Auth + Firestore + Storage everywhere.
+  - **Mobile** writes cards to `users/{uid}/cards` and maintains `cardsBySlug` on create/update/delete.
+  - **Next.js API** reads/writes the same Firestore via `firebase-admin` (PassKit, public `/c/[slug]`, Smart Exchange, auth OTP, slug index via `/api/cards/sync`).
+  - **Prisma + Supabase removed Jun 21, 2026** — no Postgres, no Supabase storage.
 - Business Cards support **Smart Exchange** — present or share your card from the phone; recipient opens `/c/[slug]`, saves your contact, and can share details back. Transport (QR, link, Wallet, AirDrop, etc.) is flexible; outcome is what matters.
 - Users can **scan physical business cards** (OCR), review parsed contact info, and save to iPhone Contacts + Firestore.
 - **UI:** Ionicons only (no emojis). Bottom tabs: **Contacts** | **Cards** (center/home, raised) | **Account**. Light/dark mode toggles on Account use custom **`AppSwitch`** (black/white, not system green).
@@ -61,6 +63,8 @@ npm run dev
 **`oryx-mobile/.env`:**
 ```
 EXPO_PUBLIC_APP_URL=http://localhost:3000
+# Required for Google Sign-In ID token (Firebase Console → Auth → Google → Web client ID):
+# EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=761069329191-xxxxxxxx.apps.googleusercontent.com
 ```
 
 **Root `.env.local` (not committed):**
@@ -85,23 +89,26 @@ Use iOS for: real Firebase, camera/OCR, Apple Wallet, Contacts, Share sheet, Tes
 
 | Route / area | Purpose |
 |--------------|---------|
-| `/c/[slug]` | Public card landing (PAID cards from Prisma) |
+| `/c/[slug]` | Public card landing (PAID cards from Firestore via `cardsBySlug` index) |
 | `/exchanges` | Owner leads dashboard (auth) |
 | `/` | Minimal home — link to `/exchanges` |
+| `POST /api/auth/send-verification-code` | Send 6-digit signup / change-email code (SendGrid) |
 | `POST /api/auth/verify-email-code` | Verify code |
-| `POST /api/cards/sync` | Mobile Firestore card → Prisma upsert (Firebase token) |
-| `DELETE /api/cards/sync` | Remove mobile-synced card from Prisma by `externalId` |
-| `GET /api/exchanges`, `/export` | Owner’s `BusinessCardExchange` leads |
+| `POST /api/cards/sync` | Maintain `cardsBySlug/{slug}` index (Firebase token); card body stays in mobile Firestore |
+| `DELETE /api/cards/sync` | Remove slug index entry |
+| `GET /api/exchanges`, `/export` | Owner’s Smart Exchange leads from `businessCardExchanges` |
 | `POST /api/public/cards/[slug]/exchange` | Public share-back form |
 | `POST /api/public/cards/[slug]/analytics` | `qr_view`, `exchange_form_view`, `reciprocal_pass_offer` |
 | `GET /api/public/cards/[slug]/pass` | Public Apple Wallet `.pkpass` (reciprocal save) |
 | `GET /api/passes/[cardId]` | Owner Apple Wallet pass (auth) |
 
-**Production deploy:** https://oryx-apple-wallet-cards.vercel.app — `npm run build` runs `prisma generate && next build`. `.vercelignore` excludes `oryx-mobile/ios` and native artifacts.
+**Production deploy:** https://oryx-apple-wallet-cards.vercel.app — `npm run build` = `next build` only. `.vercelignore` excludes `oryx-mobile/ios` and native artifacts.
 
-**Git remote:** https://github.com/juanita-kratzer/oryx — branch `main`.
+**Git remote:** https://github.com/juanita-kratzer/oryx — branch `main`. Latest: `9967923` — Firestore migration + Google Sign-In.
 
-**OTP storage:** `.data/email-verification-codes.json` until Supabase Postgres is restored. Prisma `EmailVerificationCode` model exists; migration failed Jun 2026 (`tenant not found`).
+**OTP storage:** `.data/email-verification-codes.json` locally; **`/tmp/oryx-auth/` on Vercel** (serverless filesystem is read-only outside `/tmp`).
+
+**Firestore rules/indexes:** `firestore.rules`, `firestore.indexes.json` — deploy with `firebase deploy --only firestore --project oryx-wallet-cards` (requires Firebase CLI auth + IAM on project).
 
 ---
 
@@ -131,42 +138,47 @@ Use iOS for: real Firebase, camera/OCR, Apple Wallet, Contacts, Share sheet, Tes
 | Account | `AccountScreen.tsx` — Card Credits (placeholder), **Appearance** (light/dark), security, sign out |
 | Scan business card | Contacts tab → `ScanCardScreen.tsx`, `ReviewScannedContactScreen.tsx` |
 | Account security | `EditEmailScreen.tsx`, `EditPasswordScreen.tsx` |
+| **Google Sign-In** | `components/GoogleSignInButton.tsx` (+ `.web.tsx`), `lib/googleSignIn.ts`, `constants/googleAuth.ts` — on Sign In + Sign Up (details step) |
+| Auth errors | `lib/firebaseAuthErrors.ts`, improved `lib/authApi.ts` (localhost-on-device hint) |
 | Firebase | `lib/firebase.ts` / `firebase.web.ts` |
 | Safe area | `App.tsx` wraps `SafeAreaProvider`; tab screens use `useTabBarInsets()` for top/bottom padding |
 | Firestore | `lib/firestore.ts` / `firestore.web.ts` |
 | Platform shims | `*.web.ts` for imagePicker, contacts, fileSystem, etc. |
 | Contacts (native) | `lib/contacts.ts` — lazy-loads `expo-contacts` (~15.0.11, SDK 54); `Contact.create` wraps `addContactAsync`; `isContactsAvailable()` + graceful alerts if native module missing |
 
-### Next.js + Prisma (`src/`, `prisma/`)
+### Next.js + Firestore Admin (`src/`)
 
 | Area | Key files |
 |------|-----------|
+| Firestore data layer | `src/lib/firestore/cards.ts`, `exchanges.ts`, `analytics.ts`, `types.ts` |
+| Pass templates (static) | `src/lib/templates.ts` — replaces Prisma seed; mobile `templateId` → slug mapping |
 | Canonical URLs | `src/lib/cardLinks.ts`, `src/lib/cardVisitSource.ts` |
 | Public landing | `src/app/c/[slug]/page.tsx`, `CardLandingClient.tsx` |
 | Exchange form | `ExchangeShareForm.tsx`, `ReciprocalWalletOffer.tsx` |
 | QR component | `src/components/cards/CardQrCode.tsx` |
 | PassKit | `src/lib/passkit/buildPass.ts`, `deliverApplePass.ts`, `barcodeFormats.ts` |
-| Card templates (API) | `src/lib/cardTemplates.ts` — mobile `templateId` → Postgres slug mapping |
-| Analytics | `src/lib/analytics.ts` — daily stats + `SystemEvent` (incl. `qr_barcode_card_created`) |
+| Card templates (API) | `src/lib/cardTemplates.ts` — mobile `templateId` → template slug mapping |
+| Analytics | `src/lib/analytics.ts` — `cardDailyStats` + `systemEvents` in Firestore |
 | Exchange email | `src/lib/email/exchangeNotification.ts` (SendGrid) |
-| Firebase admin (API auth) | `src/lib/firebaseAdmin.ts` — optional `FIREBASE_SERVICE_ACCOUNT_JSON` |
+| Firebase admin | `src/lib/firebaseAdmin.ts` — **`FIREBASE_SERVICE_ACCOUNT_JSON` required** |
+| Auth OTP store | `src/lib/auth/verificationStore.ts` — file store; `/tmp` on Vercel |
 
-### Prisma models (high signal)
+### Firestore collections (API + mobile)
 
-| Model | Notes |
-|-------|--------|
-| `Card` | `slug`, `externalId` (Firestore id), `allowSmartExchange` (default true; false for QR/barcode), `status` DRAFT/PAID, `fieldValues` JSON |
-| `BusinessCardExchange` | Public share-back leads; `source`: `nfc` \| `qr` \| `wallet` \| `direct` |
-| `CardDailyStats` | `taps`, `nfcVisits`, `qrVisits`, `walletVisits`, `directVisits`, vcard/pass downloads |
-| `User` | `supabaseId`, optional `firebaseUid` for mobile API bridge |
+| Collection / path | Purpose |
+|-------------------|---------|
+| `users/{uid}/cards/{cardId}` | Cards (source of truth; mobile writes, API reads for PassKit/landing) |
+| `cardsBySlug/{slug}` | Public lookup index → `{ ownerId, cardId }` — mobile + `/api/cards/sync` |
+| `businessCardExchanges/{id}` | Smart Exchange leads from `/c/[slug]` |
+| `users/{uid}/scannedContacts/{id}` | OCR-scanned contacts (mobile only) |
+| `cardDailyStats/{cardId_date}` | Landing / pass analytics |
+| `systemEvents/{id}` | System event log |
+| `publicCards/{cardId}` | Legacy published business card mirror (mobile) |
+| `exchangeRequests/{id}` | Legacy pending exchange requests (mobile) |
 
-Migrations: `20250621120000_business_card_exchange`, `20250621140000_smart_exchange_optional_source_analytics`.
+**Card record fields (high signal):** `slug`, `templateId`, `status` (`DRAFT` \| `PAID`), `fieldValues` JSON, `allowSmartExchange` (default true; false for QR/barcode), `purchaseId`, PassKit metadata in `passes`.
 
-**Prisma seed** (`prisma/seed.ts`): includes `qr-barcode-card` template (slug) for PassKit + sync. Run `npx prisma db seed` after DB restore.
-
-### Legacy Firebase Hosting Smart Exchange (`web/public/`)
-
-Older static `exchange.js` + Firestore `publicCards` / `exchangeRequests` still exist. **Primary Smart Exchange path is now Next.js `/c/[slug]`** + Prisma `BusinessCardExchange`. Mobile still writes `publicCards` via `publishBusinessCard` for legacy compatibility.
+**Slug index backfill:** Existing cards created before the index work may need re-save or a one-time sync call so `/c/[slug]` resolves.
 
 ### Bottom tab bar (mobile UX)
 
@@ -188,17 +200,9 @@ Three tabs: **Contacts** | **Cards** (center, raised circle) | **Account**.
 
 **Tuning history:** Avoid flat AMBTN-style bar (user preferred raised center). Fixed label clipping by increasing content height and safe-area padding; tightened icon–label gap; increased top screen padding for web preview (browser chrome has no notch inset).
 
-### Firestore (mobile + API)
+### Legacy Firebase Hosting Smart Exchange (`web/public/`)
 
-| Collection / path | Purpose |
-|-------------------|---------|
-| `users/{uid}/cards/{cardId}` | Cards (source of truth) |
-| `cardsBySlug/{slug}` | Public lookup index → `{ ownerId, cardId }` |
-| `businessCardExchanges/{id}` | Smart Exchange leads from `/c/[slug]` |
-| `users/{uid}/scannedContacts/{id}` | OCR-scanned contacts |
-| `cardDailyStats/{cardId_date}` | Landing / pass analytics |
-| `publicCards/{cardId}` | Legacy published business card mirror |
-| `exchangeRequests/{id}` | Legacy pending exchange requests |
+Older static `exchange.js` + Firestore `publicCards` / `exchangeRequests` still exist. **Primary Smart Exchange path is Next.js `/c/[slug]`** + Firestore `businessCardExchanges`. Mobile still writes `publicCards` via `publishBusinessCard` for legacy compatibility.
 
 ---
 
@@ -239,7 +243,20 @@ Template Gallery → **Memberships & Rewards** → **QR / Barcode Card** → `Qr
 
 ### Sync
 
-`POST /api/cards/sync` maps mobile `QR_BARCODE_CARD` → Postgres template slug `qr-barcode-card` (not forced to BUSINESS template).
+`POST /api/cards/sync` updates the **`cardsBySlug`** index only (mobile already wrote the card doc). Maps private templates (QR/barcode) to `indexed: false`.
+
+### Google Sign-In (Jun 21, 2026)
+
+| Piece | Detail |
+|-------|--------|
+| Package | `@react-native-google-signin/google-signin@^16.1.2` |
+| Config | `GoogleService-Info.plist` (`CLIENT_ID`, `REVERSED_CLIENT_ID`); `app.config.js` plugin + URL scheme |
+| iOS client ID | `constants/googleAuth.ts` — from plist |
+| Web client ID | **`EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`** in `.env` — required for Firebase `idToken` |
+| UI | `GoogleSignInButton` on **Sign In** and **Sign Up** (details step); skips email OTP flow |
+| Native rebuild | Required after install — `expo prebuild`, `pod install`, Xcode build |
+
+Enable **Google** provider in Firebase Console → Authentication. Without web client ID, sign-in fails with “did not return an ID token.”
 
 ### My Cards
 
@@ -302,9 +319,9 @@ Helpers: `getCardPublicUrl`, `getCardNfcUrl`, `getCardQrPayload`, `getCardWallet
 
 - Card preview, QR (“Scan to open card”), Save Contact, Save Card Image
 - Optional **Smart Exchange** form (if `allowSmartExchange` is true)
-- Only **PAID** cards in Prisma are shown
+- Only **PAID** cards in Firestore are shown (via `cardsBySlug` → `users/{uid}/cards`)
 
-### Optional Smart Exchange (`Card.allowSmartExchange`)
+### Optional Smart Exchange (`allowSmartExchange` on card)
 
 - Toggle on business card delivery screen (no section heading; description paragraph above toggle)
 - When disabled: Save Contact + QR still work on landing; exchange form hidden; API returns 403
@@ -329,15 +346,15 @@ Helpers: `getCardPublicUrl`, `getCardNfcUrl`, `getCardQrPayload`, `getCardWallet
 - **Legacy:** `ExchangeDetailScreen` can still show pending Firestore `exchangeRequests` when opened with `requestId` (no separate exchange list screen in nav)
 - Owner email on new lead if SendGrid configured (non-blocking)
 
-### Mobile → Prisma bridge
+### Mobile → API bridge
 
 **Build/testing:** In-app purchase (RevenueCat / $4.99) is **disabled**. New cards are created as `PAID` with `purchaseId: build_test`. Legacy draft cards auto-activate on open. Re-enable IAP before production.
 
-After create/update, mobile calls `syncCardToApi` → `POST /api/cards/sync` with Firebase ID token. Sync resolves Postgres template by mobile `templateId` (`business` → `elegant-business`, `QR_BARCODE_CARD` → `qr-barcode-card`). Requires `FIREBASE_SERVICE_ACCOUNT_JSON` on the API.
+After create/update, mobile writes Firestore directly and calls `syncCardToApi` → `POST /api/cards/sync` with Firebase ID token to maintain **`cardsBySlug`**. Requires `FIREBASE_SERVICE_ACCOUNT_JSON` on Vercel.
 
 ### Analytics events
 
-`landing_view`, `qr_view`, `exchange_form_view`, `exchange_submitted`, `reciprocal_pass_offer`, `reciprocal_pass_download`, `qr_barcode_card_created` — plus per-source daily counters on `CardDailyStats`.
+`landing_view`, `qr_view`, `exchange_form_view`, `exchange_submitted`, `reciprocal_pass_offer`, `reciprocal_pass_download`, `qr_barcode_card_created` — plus per-source daily counters on `cardDailyStats`.
 
 ### Card links in Firestore
 
@@ -371,6 +388,7 @@ On every **business** card create/edit, Firestore stores `publicUrl`, `nfcUrl`, 
 | `ExchangeListScreen.tsx` | **Deleted Jun 21** — exchange leads live on Contacts tab |
 | `data/templates.ts` (`LOCAL_TEMPLATES`) | **Deleted** — unused form-template system |
 | `nfcWrite.ts`, `lib/vcard.ts`, `WebUnsupportedScreen.tsx`, `src/fonts/*` | **Deleted Jun 21** — unused |
+| **Prisma + Supabase** (`prisma/`, `src/lib/db.ts`, `supabase.ts`, `supabaseAuth.ts`, mobile Supabase docs/SQL) | **Deleted Jun 21** — Firestore is sole backend |
 | Root marketing landing | Removed earlier; `/` is minimal |
 | Firebase Hosting `exchange.js` | Legacy; primary path is Next.js `/c/[slug]` |
 
@@ -386,8 +404,10 @@ On every **business** card create/edit, Firestore stores `publicUrl`, `nfcUrl`, 
 
 ### Firebase Authentication
 
-- Email/password; verification codes via SendGrid (signup, change-email, change-password)
+- **Email/password** — verification codes via SendGrid (signup, change-email, change-password)
+- **Google Sign-In** — native on iOS/Android; Firebase `signInWithCredential` with Google ID token
 - Account tab: **Card Credits** (placeholder), **Appearance** (light/dark mode), change email + change password with 6-digit verification
+- **Device builds:** set `EXPO_PUBLIC_APP_URL=https://oryx-apple-wallet-cards.vercel.app` (not `localhost`)
 
 ### Scan Business Card (OCR)
 
@@ -397,11 +417,12 @@ On every **business** card create/edit, Firestore stores `publicUrl`, `nfcUrl`, 
 
 ### iOS native
 
-- Expo config plugins: `withFirebase.js`, `withXcodeSettings.js`, `withFmtFix.js`
+- Expo config plugins: `withFirebase.js`, `withXcodeSettings.js`, `withFmtFix.js`, **`@react-native-google-signin/google-signin`**
 - **New Architecture** enabled (`newArchEnabled: true` — required by Reanimated); iOS 16+, static Firebase frameworks
 - Xcode workspace: `oryx-mobile/ios/Oryx.xcworkspace`
 - Pass download in app: `GET /api/passes/{cardId}` with Firebase bearer token
 - Camera: business card OCR + QR/barcode membership scan (`expo-camera` plugin in `app.config.js`)
+- Google Sign-In URL scheme: reversed client ID in `CFBundleURLTypes` (`app.config.js`)
 
 ### Web preview mode
 
@@ -413,9 +434,9 @@ On every **business** card create/edit, Firestore stores `publicUrl`, `nfcUrl`, 
 
 ## Dependencies (key)
 
-**Mobile:** Expo SDK 54, React Native Firebase, `react-native-qrcode-svg`, `expo-camera`, `jsbarcode`, `@xmldom/xmldom`, ML Kit text recognition, `expo-contacts` (~15.0.11 — must match SDK; v56 uses `ExpoContactsNext` and crashes on SDK 54 builds). (`react-native-purchases` in package.json but unused during build phase.)
+**Mobile:** Expo SDK 54, React Native Firebase, `@react-native-google-signin/google-signin`, `react-native-qrcode-svg`, `expo-camera`, `jsbarcode`, `@xmldom/xmldom`, ML Kit text recognition, `expo-contacts` (~15.0.11 — must match SDK; v56 uses `ExpoContactsNext` and crashes on SDK 54 builds). (`react-native-purchases` in package.json but unused during build phase.)
 
-**Root:** Next.js, Prisma, `passkit-generator`, `qrcode`, `@sendgrid/mail`, `firebase-admin` (optional), Supabase storage for pass files.
+**Root:** Next.js, `passkit-generator`, `qrcode`, `@sendgrid/mail`, **`firebase-admin`** (required), `sharp`. No Prisma/Supabase.
 
 ---
 
@@ -426,15 +447,15 @@ On every **business** card create/edit, Firestore stores `publicUrl`, `nfcUrl`, 
 cd /Users/juanitakratzer/OryxWalletApp && npm run dev    # :3000
 cd oryx-mobile && npm run dev                          # :8081
 
-# iOS native rebuild (after native dep changes, e.g. expo-contacts)
-cd oryx-mobile && npx expo run:ios
-# Or: npx expo prebuild --platform ios && cd ios && pod install && open Oryx.xcworkspace
+# iOS native rebuild (after native dep changes — expo-contacts, Google Sign-In, etc.)
+cd oryx-mobile && npx expo prebuild --platform ios && cd ios && pod install && open Oryx.xcworkspace
+# Or: npx expo run:ios
 
-# Prisma seed (qr-barcode-card template, etc.)
-cd /Users/juanitakratzer/OryxWalletApp && npx prisma db seed
+# Vercel production deploy
+cd /Users/juanitakratzer/OryxWalletApp && npx vercel deploy --prod
 
-# DB when Supabase is restored
-cd /Users/juanitakratzer/OryxWalletApp && npm run db:migrate
+# Firestore rules + indexes
+firebase deploy --only firestore --project oryx-wallet-cards
 ```
 
 ---
@@ -443,23 +464,28 @@ cd /Users/juanitakratzer/OryxWalletApp && npm run db:migrate
 
 | Where | Variable |
 |-------|----------|
-| Root | `NEXT_PUBLIC_APP_URL`, `DATABASE_URL` |
-| Root | `FIREBASE_SERVICE_ACCOUNT_JSON` (mobile API auth) |
+| Root | `NEXT_PUBLIC_APP_URL` |
+| Root | **`FIREBASE_SERVICE_ACCOUNT_JSON`** (required — API auth + Firestore reads/writes) |
 | Root | PassKit certs/IDs (see passkit signer config) |
 | Root | `SENDGRID_*` for verification + exchange notification emails |
-| Mobile | `EXPO_PUBLIC_APP_URL=http://localhost:3000` |
+| Mobile | `EXPO_PUBLIC_APP_URL` — production URL on device/TestFlight |
+| Mobile | **`EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`** — Google Sign-In (Firebase web client) |
+| Mobile | `APPLE_TEAM_ID`, `EXPO_PUBLIC_REVENUECAT_API_KEY` (optional) |
 
 ---
 
 ## Known issues
 
-- **Supabase Postgres down** — `npm run db:migrate` fails (`tenant not found`). OTP uses file store; public landing/exchanges need DB when testing full flow locally.
+- **Google Sign-In web client ID** — must set `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` in mobile `.env` and rebuild native app; enable Google provider in Firebase Console.
+- **Firebase CLI deploy** — `firebase deploy --only firestore` may fail with 403 until CLI account has `serviceusage.serviceUsageConsumer` on project `oryx-wallet-cards`; deploy rules via Console if needed.
 - **Google Wallet** — not implemented; reciprocal UI shows “coming soon.”
-- **Identity split** — mobile Firebase uid vs Prisma `User`; bridged via `firebaseUid` + sync API.
-- **Legacy** — `web/public/exchange.js` and Firestore `exchangeRequests` coexist with Prisma leads; `ExchangeDetailScreen` can merge API leads + pending Firestore requests when applicable.
+- **Legacy** — `web/public/exchange.js` and Firestore `exchangeRequests` coexist with Firestore `businessCardExchanges`; `ExchangeDetailScreen` can merge API leads + pending Firestore requests when applicable.
+- **Slug index** — older cards may lack `cardsBySlug` entry; re-save card or call sync API.
 - AMBTN theme colours are **mirrored** in `ambtnThemeColors.ts`; do not edit the AMBTN project.
 - **NFC hardware write** — not exposed in UI; `react-native-nfc-manager` may remain in deps but no user-facing NFC write flow.
-- **`expo-contacts` iOS crash (fixed Jun 21)** — `expo-contacts@56` was installed on SDK 54; JS looked for native module `ExpoContactsNext` which was never in the iOS binary (`Podfile.lock` had no Contacts pod). Fixed by pinning `~15.0.11`, running `pod install` (`ExpoContacts`), lazy-loading in `lib/contacts.ts`, and graceful UI when unavailable. **Requires a native rebuild** (`npx expo run:ios` or Xcode) before Save to Contacts works on device.
+- **`expo-contacts` iOS crash (fixed Jun 21)** — pin `~15.0.11`, lazy-load in `lib/contacts.ts`, native rebuild required.
+- **Auth on physical device** — `EXPO_PUBLIC_APP_URL=localhost` causes “Network request failed” on sign-up; use production URL or Mac LAN IP.
+- **`VirtualizedList` startup crash (fixed Jun 21)** — global `@babel/plugin-transform-class-properties` (default `loose: false`) breaks RN lists. Keep only `babel-preset-expo` + reanimated plugin globally; use `babel.config.js` **overrides** with `{ loose: true }` for specific `node_modules` only.
 
 ---
 
@@ -467,16 +493,17 @@ cd /Users/juanitakratzer/OryxWalletApp && npm run db:migrate
 
 | Priority | Item |
 |----------|------|
-| Ship blocker | Restore Supabase Postgres; run migrations |
+| Auth | Set `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`; device-test Google + email sign-up on production API |
+| Ops | Deploy Firestore rules/indexes (`firebase deploy --only firestore`) |
 | Killer feature v2 | **Google Wallet** passes for reciprocal save |
-| CRM | `leadStatus` on `BusinessCardExchange` (new → contacted → qualified → customer) |
+| CRM | `leadStatus` on `businessCardExchanges` (new → contacted → qualified → customer) |
 | Growth | Push notifications for new exchange leads |
 | Ops | TestFlight; device test: present/share → landing → exchange → reciprocal Wallet |
 | UX | Card credits purchase flow (Account → Card Credits row is placeholder) |
 | UX | Dark mode: many stack screens still use static `BRAND` import — tabs + Account themed |
-| QR/Barcode | Run `npx prisma db seed` on deploy; device-test scan → save → Wallet pass |
-| iOS | Rebuild after `expo-contacts` fix: `cd oryx-mobile && npx expo run:ios`; test Save to Contacts on ExchangeDetail + ReviewScannedContact |
+| Data | Backfill `cardsBySlug` for any pre-migration cards |
+| iOS | Rebuild after Google Sign-In + expo-contacts: Xcode build to device |
 
 ---
 
-*Last updated: Jun 21, 2026 — expo-contacts crash fix (SDK 54 pin + lazy load), legacy editor removed, AppSwitch toggles, delivery preview copy fixes, QR/Barcode Card, tab bar, WebDevBanner removed, Vercel + GitHub main.*
+*Last updated: Jun 21, 2026 — Firestore backend (Prisma/Supabase removed), Google Sign-In, Vercel OTP `/tmp` fix, auth device URL notes, commit `9967923`.*

@@ -1,6 +1,6 @@
 import type { Card } from "../types";
 import { getAuth } from "./firebase";
-import { buildCardLinkFields } from "./cardLinks";
+import { buildCardLinkFields, getAppOrigin } from "./cardLinks";
 import { isPrivateCardTemplate } from "../constants/cardTemplates";
 
 function storageKey(): string {
@@ -147,7 +147,7 @@ export async function markCardPaid(
 }
 
 export function getPassDownloadUrl(cardId: string): string {
-  return `https://oryx.app/api/passes/${cardId}`;
+  return `${getAppOrigin()}/api/passes/${cardId}`;
 }
 
 export async function deleteCard(id: string): Promise<void> {

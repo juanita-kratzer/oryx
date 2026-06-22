@@ -3,7 +3,12 @@ require("dotenv").config();
 const appleTeamId = process.env.APPLE_TEAM_ID || "D4H4BX9XXY";
 
 const googleReversedClientId =
-  "com.googleusercontent.apps.761069329191-hulog7mb3kp2f45fvcr2kq718oi1ue0l";
+  "com.googleusercontent.apps.39779450467-lpolb7ceq5q3s5lps5sdqil667squfon";
+
+const iosUrlSchemes = [
+  { CFBundleURLSchemes: [googleReversedClientId] },
+  { CFBundleURLSchemes: ["oryx"] },
+];
 
 export default {
   expo: {
@@ -33,14 +38,7 @@ export default {
         NSAppTransportSecurity: {
           NSAllowsLocalNetworking: true,
         },
-        CFBundleURLTypes: [
-          {
-            CFBundleURLSchemes: [googleReversedClientId],
-          },
-          {
-            CFBundleURLSchemes: ["oryx"],
-          },
-        ],
+        CFBundleURLTypes: iosUrlSchemes,
       },
     },
     android: {

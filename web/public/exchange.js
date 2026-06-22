@@ -1,9 +1,9 @@
 firebase.initializeApp({
-  apiKey: "AIzaSyC45jk8rL4BTiwp2vXMLtO_cZ-upsQ0_us",
-  projectId: "oryx-wallet-cards",
-  storageBucket: "oryx-wallet-cards.firebasestorage.app",
-  messagingSenderId: "761069329191",
-  appId: "1:761069329191:ios:d4f642990483ad72536702",
+  apiKey: "AIzaSyDe84WEIOVMjtKb1gjj8zDmaWQo-_PkYpI",
+  projectId: "oryx-wallet-cards-2db19",
+  storageBucket: "oryx-wallet-cards-2db19.firebasestorage.app",
+  messagingSenderId: "39779450467",
+  appId: "1:39779450467:ios:448caf36f7593b05fe8256",
 });
 
 const db = firebase.firestore();

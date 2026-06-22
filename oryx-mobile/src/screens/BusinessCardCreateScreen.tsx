@@ -24,16 +24,9 @@ import {
   AMBTN_THEME_COLORS,
 } from "../constants/ambtnThemeColors";
 import { createCard, updateCard, fetchCard } from "../lib/firestore";
-import { uploadLogo } from "../lib/storage";
-import {
-  getCardNfcUrl,
-  getCardQrPayload,
-  getCardPublicUrl,
-  generateCardSlug,
-} from "../lib/cardLinks";
-import { syncCardToApi } from "../lib/cardSync";
+import { generateCardSlug, getCardQrPayload } from "../lib/cardLinks";
+import { finishCardSaveInBackground } from "../lib/finishCardSave";
 import { notifyCardsChanged } from "../lib/cardsEvents";
-import { publishBusinessCard } from "../lib/exchanges";
 import { BRAND } from "../constants/colors";
 import type { RootStackParamList } from "../types";
 
@@ -178,36 +171,20 @@ export function BusinessCardCreateScreen({ route, navigation }: Props) {
         setCreatedCardId(card.id);
       }
 
-      let logoUrl: string | null = card.logoUrl;
-      const isLocalLogo =
-        logoUri && !logoUri.startsWith("http://") && !logoUri.startsWith("https://");
-      if (isLocalLogo) {
-        const uploaded = await uploadLogo(card.id, logoUri);
-        logoUrl = uploaded.url;
-        card = await updateCard(card.id, { logoUrl });
-      } else if (!logoUri) {
-        logoUrl = null;
-        card = await updateCard(card.id, { logoUrl: null });
-      }
+      const publishFields = {
+        yourName,
+        mobile,
+        email,
+        jobTitle,
+        businessName,
+        website,
+        backgroundColor,
+      };
 
-      await publishBusinessCard(card.id, {
-        fullName: yourName.trim(),
-        phone: mobile.trim(),
-        email: email.trim(),
-        jobTitle: jobTitle.trim(),
-        company: businessName.trim(),
-        website: website.trim(),
-        slug: card.slug,
-        publicUrl: card.publicUrl ?? getCardPublicUrl(card.slug),
-        nfcUrl: card.nfcUrl ?? getCardNfcUrl(card.slug),
-        qrUrl: card.qrUrl ?? getCardQrPayload(card.slug),
-        cardDesign: {
-          backgroundColor,
-          logoUrl,
-        },
+      finishCardSaveInBackground(card, {
+        logoUri,
+        businessCard: publishFields,
       });
-
-      await syncCardToApi(card);
 
       notifyCardsChanged();
 

@@ -22,7 +22,7 @@ import { CardDetailPreview } from "../components/cards/CardDetailPreview";
 import { getCardPublicUrl } from "../lib/cardLinks";
 import { QR_BARCODE_CARD_TEMPLATE_ID } from "../constants/cardTemplates";
 import { syncCardToApi, deleteCardFromApi } from "../lib/cardSync";
-import { notifyCardsChanged } from "../lib/cardsEvents";
+import { notifyCardsChanged, subscribeCardsChanged } from "../lib/cardsEvents";
 import { BRAND } from "../constants/colors";
 import type { RootStackParamList, Card } from "../types";
 
@@ -86,6 +86,12 @@ export function CardDeliveryScreen({ route, navigation }: Props) {
     }, [loadCard])
   );
 
+  useEffect(() => {
+    return subscribeCardsChanged(() => {
+      if (!deletedRef.current) loadCard();
+    });
+  }, [loadCard]);
+
   const handleAddToWallet = async () => {
     if (!card) return;
     setDownloading(true);
@@ -102,7 +108,31 @@ export function CardDeliveryScreen({ route, navigation }: Props) {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (download.status !== 200) throw new Error("Download failed");
+      if (download.status !== 200) {
+        let serverMessage = "";
+        try {
+          const errRes = await fetch(url, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const body = (await errRes.json()) as { error?: string };
+          serverMessage = body.error?.trim() ?? "";
+        } catch {
+          // ignore non-JSON error bodies
+        }
+        const hint =
+          download.status === 401
+            ? "Sign in again and retry."
+            : download.status === 404
+              ? "Card not found on the server. Try opening the card again."
+              : download.status === 503
+                ? serverMessage ||
+                  "Server is not fully configured yet (Firebase or PassKit)."
+                : download.status >= 500
+                  ? serverMessage ||
+                    "Pass could not be generated. Check server logs."
+                  : `Server returned ${download.status}.`;
+        throw new Error(`Download failed. ${hint}`);
+      }
 
       const canOpen = await Linking.canOpenURL(localPath);
       if (canOpen) {

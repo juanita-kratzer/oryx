@@ -26,8 +26,7 @@ import {
 } from "../constants/ambtnThemeColors";
 import { QR_BARCODE_CARD_TEMPLATE_ID } from "../constants/cardTemplates";
 import { createCard, updateCard, fetchCard } from "../lib/firestore";
-import { uploadLogo } from "../lib/storage";
-import { syncCardToApi } from "../lib/cardSync";
+import { finishCardSaveInBackground } from "../lib/finishCardSave";
 import { notifyCardsChanged } from "../lib/cardsEvents";
 import {
   inferDisplayCodeKind,
@@ -232,16 +231,8 @@ export function QrBarcodeCardCreateScreen({ route, navigation }: Props) {
         setCreatedCardId(card.id);
       }
 
-      const isLocalLogo =
-        logoUri && !logoUri.startsWith("http://") && !logoUri.startsWith("https://");
-      if (isLocalLogo) {
-        const uploaded = await uploadLogo(card.id, logoUri);
-        card = await updateCard(card.id, { logoUrl: uploaded.url });
-      } else if (!logoUri) {
-        card = await updateCard(card.id, { logoUrl: null });
-      }
+      finishCardSaveInBackground(card, { logoUri });
 
-      await syncCardToApi(card);
       notifyCardsChanged();
 
       if (isEditing) {
