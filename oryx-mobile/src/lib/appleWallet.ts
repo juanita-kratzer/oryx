@@ -5,7 +5,7 @@ type WalletNativeError = Error & { code?: string };
 
 const ERROR_MESSAGES: Record<string, string> = {
   INVALID_PASS:
-    "Apple could not read this pass. Try again after updating the app, or contact support if it persists.",
+    "Apple could not read this pass. Pull down to refresh the app, then try again.",
   HTTP_ERROR: "The server could not generate your pass. Try again in a moment.",
   NETWORK_ERROR: "Could not reach the server. Check your connection and retry.",
   INVALID_DATA: "The server returned an empty pass file.",
